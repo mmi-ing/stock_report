@@ -4,4 +4,10 @@ __pycache__/
 .env
 .DS_Store
 output/
-.claude/
+.venv/
+.cache/
+*.egg-info/
+.pytest_cache/
+
+# Claude Code: settings.local.json 만 무시, CLAUDE.md 는 추적
+.claude/settings.local.json
