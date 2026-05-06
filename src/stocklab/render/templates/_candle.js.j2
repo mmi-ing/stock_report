@@ -1,0 +1,166 @@
+// README §8 의 Chart.js 캔들 plugin + EMA 오버레이 + RSI/MACD 보조차트.
+// 데이터는 인라인 주입 (외부 fetch 없음).
+
+const CHART = {{ chart | tojson_safe | safe }};
+const PALETTE = {{ palette | tojson | safe }};
+const INDICATOR = {{ indicator_panel | tojson_safe | safe }};
+
+const candlePlugin = {
+  id: 'candles',
+  beforeDatasetsDraw(chart) {
+    const ctx = chart.ctx;
+    const x = chart.scales.x;
+    const y = chart.scales.y;
+    if (!CHART.ohlc || !CHART.ohlc.length) return;
+    const barW = Math.max(6, (x.width / CHART.ohlc.length) * 0.5);
+    CHART.ohlc.forEach((c, i) => {
+      const [o, h, l, cl] = c;
+      const xPos = x.getPixelForValue(i);
+      const yH = y.getPixelForValue(h);
+      const yL = y.getPixelForValue(l);
+      const yO = y.getPixelForValue(o);
+      const yC = y.getPixelForValue(cl);
+      const color = cl >= o ? PALETTE.green : PALETTE.red;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(xPos, yH);
+      ctx.lineTo(xPos, yL);
+      ctx.stroke();
+      ctx.fillStyle = color;
+      const top = Math.min(yO, yC);
+      const ht = Math.max(2, Math.abs(yC - yO));
+      ctx.fillRect(xPos - barW / 2, top, barW, ht);
+      if (CHART.events && CHART.events[i]) {
+        ctx.fillStyle = PALETTE.yellow;
+        ctx.font = 'bold 9px IBM Plex Mono';
+        ctx.textAlign = 'center';
+        ctx.fillText('▲', xPos, yH - 10);
+      }
+      ctx.restore();
+    });
+  }
+};
+
+function makeMainChart() {
+  const el = document.getElementById('candleChart');
+  if (!el || !CHART.weeks.length) return;
+  const lineDs = (label, data, color, dash) => ({
+    label, data, borderColor: color, borderWidth: 1.2,
+    pointRadius: 0, fill: false, tension: 0.1,
+    borderDash: dash || [],
+  });
+  new Chart(el.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: CHART.weeks,
+      datasets: [
+        lineDs('EMA5', CHART.ema5, '#ff6b9d'),
+        lineDs('EMA20', CHART.ema20, '#ffd93d'),
+        lineDs('EMA60', CHART.ema60, '#6bcb77', [4, 3]),
+        lineDs('EMA120', CHART.ema120, '#4d96ff', [6, 4]),
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 600 },
+      scales: {
+        x: {
+          ticks: { color: PALETTE.text3, font: { family: 'IBM Plex Mono', size: 8 }, maxRotation: 45 },
+          grid: { color: 'rgba(30,45,69,0.4)' },
+        },
+        y: {
+          position: 'right',
+          ticks: {
+            color: PALETTE.text3, font: { family: 'IBM Plex Mono', size: 9 },
+            callback: v => '{{ price_symbol }}' + v.toLocaleString(),
+          },
+          grid: { color: 'rgba(30,45,69,0.4)' },
+        },
+      },
+      plugins: {
+        legend: { position: 'top', labels: { color: PALETTE.text2, font: { family: 'IBM Plex Mono', size: 9 } } },
+        tooltip: {
+          backgroundColor: PALETTE.card, borderColor: PALETTE.border,
+          titleColor: PALETTE.accent, bodyColor: PALETTE.text,
+          callbacks: {
+            afterBody: (items) => {
+              const i = items[0].dataIndex;
+              const c = CHART.ohlc[i];
+              if (!c) return '';
+              return [`O ${c[0].toLocaleString()}`, `H ${c[1].toLocaleString()}`, `L ${c[2].toLocaleString()}`, `C ${c[3].toLocaleString()}`];
+            },
+          },
+        },
+      },
+    },
+    plugins: [candlePlugin],
+  });
+}
+
+function makeRsiChart() {
+  const el = document.getElementById('rsiChart');
+  if (!el || !CHART.rsi.length) return;
+  new Chart(el.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: CHART.weeks,
+      datasets: [
+        { label: 'RSI', data: CHART.rsi, borderColor: PALETTE.accent, borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.2 },
+        { label: '70', data: CHART.weeks.map(() => 70), borderColor: 'rgba(255,77,109,0.5)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false },
+        { label: '30', data: CHART.weeks.map(() => 30), borderColor: 'rgba(0,209,122,0.5)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: PALETTE.text3, font: { size: 8 } }, grid: { display: false } },
+        y: { min: 20, max: 90, ticks: { color: PALETTE.text3, font: { size: 8 } }, grid: { color: 'rgba(30,45,69,0.4)' } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: PALETTE.card, borderColor: PALETTE.border, titleColor: PALETTE.accent, bodyColor: PALETTE.text },
+      },
+    },
+  });
+}
+
+function makeMacdChart() {
+  const el = document.getElementById('macdChart');
+  if (!el || !CHART.macd.length) return;
+  new Chart(el.getContext('2d'), {
+    data: {
+      labels: CHART.weeks,
+      datasets: [
+        { type: 'bar', label: 'Hist', data: CHART.hist, backgroundColor: CHART.hist.map(v => (v ?? 0) >= 0 ? 'rgba(0,209,122,0.6)' : 'rgba(255,77,109,0.6)'), borderWidth: 0 },
+        { type: 'line', label: 'MACD', data: CHART.macd, borderColor: PALETTE.accent, borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.2 },
+        { type: 'line', label: 'Signal', data: CHART.signal, borderColor: '#ff6b9d', borderWidth: 1.2, pointRadius: 0, fill: false, tension: 0.2 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: PALETTE.text3, font: { size: 8 } }, grid: { display: false } },
+        y: { ticks: { color: PALETTE.text3, font: { size: 8 } }, grid: { color: 'rgba(30,45,69,0.4)' } },
+      },
+      plugins: { legend: { display: false } },
+    },
+  });
+}
+
+function makeSpark(id, data, color) {
+  const el = document.getElementById(id);
+  if (!el || !data || !data.length) return;
+  new Chart(el.getContext('2d'), {
+    type: 'line',
+    data: { labels: data.map((_, i) => i), datasets: [{ data, borderColor: color, borderWidth: 1.5, pointRadius: 0, fill: true, backgroundColor: color + '22', tension: 0.4 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } } },
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  makeMainChart();
+  makeRsiChart();
+  makeMacdChart();
+});

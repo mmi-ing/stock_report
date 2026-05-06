@@ -1,0 +1,206 @@
+{% extends "base.html.j2" %}
+{% block content %}
+
+<div class="header">
+  <div class="header-top">
+    <div class="ticker-block">
+      <div class="ticker-row">
+        <div class="ticker-badge">{{ ticker }}</div>
+        <div class="company-name">{{ display_name }}</div>
+      </div>
+      <div class="company-sub">{{ company_sub }}</div>
+    </div>
+    <div class="price-block">
+      <div class="current-price">{{ price_symbol }}{% if price %}{{ "{:,.2f}".format(price) if currency != "KRW" else "{:,.0f}".format(price) }}{% else %}N/A{% endif %}</div>
+      {% if change_pct is not none %}
+      <div class="change-badge {{ 'pos' if change_pct >= 0 else 'neg' }}">{{ change_str }}</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="meta-item"><span class="meta-label">시가총액</span><span class="meta-value">{{ market_cap_str }}</span></div>
+    <div class="meta-item"><span class="meta-label">52주 고가</span><span class="meta-value">{{ week52_high_str }}</span></div>
+    <div class="meta-item"><span class="meta-label">52주 저가</span><span class="meta-value">{{ week52_low_str }}</span></div>
+    <div class="meta-item"><span class="meta-label">Forward P/E</span><span class="meta-value">{{ pe_forward_str }}</span></div>
+    <div class="meta-item"><span class="meta-label">P/S (TTM)</span><span class="meta-value">{{ ps_ttm_str }}</span></div>
+    <div class="meta-item"><span class="meta-label">배당수익률</span><span class="meta-value">{{ div_yield_str }}</span></div>
+    <div class="meta-item"><span class="meta-label">다음 실적</span><span class="meta-value">{{ next_earnings_str }}</span></div>
+    <div class="meta-item"><span class="meta-label">애널 컨센서스</span><span class="meta-value">{{ consensus_str }}</span></div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ② 차트 분석 영역 -->
+  <div class="section-title">차트 분석 · 기술적 지표 {% if ohlc_estimated %}<span style="color:var(--text3);font-size:9px;">(est.)</span>{% endif %}</div>
+  <div class="chart-area">
+    <div class="volume-bar-panel">
+      {% for vp in chart.volume_profile %}
+      <div class="vp-row">
+        <span class="vp-label">{% if currency == "KRW" %}₩{{ "{:,.0f}".format(vp.mid) }}{% else %}${{ "{:,.0f}".format(vp.mid) }}{% endif %}</span>
+        <div class="vp-bar {{ vp.zone }}" style="width: {{ (vp.pct * 100 * 2) | round(0) }}%; max-width: 22px;"></div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="main-chart-wrap"><canvas id="candleChart"></canvas></div>
+    <div class="indicator-panel">
+      <div class="ind-block">
+        <div class="ind-title">RSI(14)</div>
+        <div class="ind-val {{ indicator_panel.rsi.color }}">{{ indicator_panel.rsi.value }}</div>
+        <div class="ind-line">{{ indicator_panel.rsi.signal }}</div>
+        <div class="ind-desc">{{ indicator_panel.rsi.desc }}</div>
+      </div>
+      <div class="ind-block">
+        <div class="ind-title">MACD(12,26,9)</div>
+        <div class="ind-val {{ 'green' if indicator_panel.macd.macd_pos else 'red' }}">{{ indicator_panel.macd.macd }}</div>
+        <div class="ind-line">Signal {{ indicator_panel.macd.signal }} / Hist {{ indicator_panel.macd.hist }}</div>
+        <div class="ind-desc">{{ indicator_panel.macd.desc }}</div>
+      </div>
+      <div class="ind-block">
+        <div class="ind-title">EMA</div>
+        <div class="ema-row"><span class="label ema5-c">5</span><span>{{ indicator_panel.ema.ema5 }}</span></div>
+        <div class="ema-row"><span class="label ema20-c">20</span><span>{{ indicator_panel.ema.ema20 }}</span></div>
+        <div class="ema-row"><span class="label ema60-c">60</span><span>{{ indicator_panel.ema.ema60 }}</span></div>
+        <div class="ema-row"><span class="label ema120-c">120</span><span>{{ indicator_panel.ema.ema120 }}</span></div>
+        <div class="ind-desc">{{ indicator_panel.ema.desc }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 보조지표 차트 -->
+  <div class="sub-charts">
+    <div class="sub-chart"><canvas id="rsiChart"></canvas></div>
+    <div class="sub-chart"><canvas id="macdChart"></canvas></div>
+  </div>
+
+  <!-- ④ 재무 지표 -->
+  <div class="section-title">재무 지표 · TTM</div>
+  <div class="fin-grid">
+    {% for f in fin_cards %}
+    <div class="fin-card {{ f.direction }}">
+      <div class="fin-icon">{{ f.icon }}</div>
+      <div class="fin-label">{{ f.label }}</div>
+      <div class="fin-value">{{ f.value }}</div>
+      {% if f.yoy %}<div class="fin-yoy {{ f.direction }}">YoY {{ f.yoy }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ⑤ 매매 전략 -->
+  <div class="section-title">매매 전략 · 분할 매수 가이드</div>
+  <table class="strategy-table">
+    <thead>
+      <tr>
+        <th>구분</th><th>가격 범위</th><th>비중</th><th>행동</th><th>근거</th><th>조건</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in strategy_rows %}
+      <tr>
+        <td><span class="badge badge-{{ r.badge }}">{{ r.label }}</span></td>
+        <td>{{ r.price_range }}</td>
+        <td>{{ r.weight }}</td>
+        <td>{{ r.action }}</td>
+        <td>{{ r.rationale }}</td>
+        <td>{{ r.condition }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- ⑥ 시나리오 분석 -->
+  <div class="section-title">시나리오 분석 · 확률 가중</div>
+  <div class="scenario-grid">
+    {% for s in scenarios %}
+    <div class="scenario-card {{ s.kind }}">
+      <div class="scenario-header">
+        <span class="scenario-label">{{ s.emoji }} {{ s.title }}</span>
+        <span class="scenario-prob">{{ s.probability }}%</span>
+      </div>
+      <div class="scenario-price">{{ s.target_range }}</div>
+      {% for b in s.bullets %}<div class="scenario-item">{{ b }}</div>{% endfor %}
+      <div class="scenario-check">
+        <div class="check-title">확인 포인트</div>
+        {% for c in s.checks %}<div class="check-item">{{ c }}</div>{% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ⑦ 산업 분석 -->
+  <div class="section-title">산업 분석 · 동종업계 비교</div>
+  <div class="industry-grid">
+    <div class="card">
+      <div class="card-title">동종업계 비교</div>
+      {% if industry_rows %}
+      <table class="strategy-table" style="margin: 0;">
+        <thead><tr><th>종목</th><th>특화</th><th>P/S</th><th>매출 성장</th></tr></thead>
+        <tbody>
+          {% for r in industry_rows %}
+          <tr><td{% if r.is_target %} style="color: var(--accent);"{% endif %}>{% if r.is_target %}★ {% endif %}{{ r.ticker }}</td><td>{{ r.specialty }}</td><td>{{ r.ps }}</td><td>{{ r.revenue_growth }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="font-size: 11px; color: var(--text3);">동종업계 데이터는 다음 단계에서 확장 예정 (Step 7).</div>
+      {% endif %}
+    </div>
+    <div class="card">
+      <div class="card-title">모멘텀 / 리스크 / 중립</div>
+      <div class="tag-group">
+        <div class="tag-group-title">✅ 성장 모멘텀</div>
+        {% for t in industry_tags.positive %}<span class="industry-tag tag-pos">{{ t }}</span>{% endfor %}
+      </div>
+      <div class="tag-group">
+        <div class="tag-group-title">⚠️ 주요 리스크</div>
+        {% for t in industry_tags.negative %}<span class="industry-tag tag-neg">{{ t }}</span>{% endfor %}
+      </div>
+      <div class="tag-group">
+        <div class="tag-group-title">🟡 중립 요인</div>
+        {% for t in industry_tags.neutral %}<span class="industry-tag tag-neu">{{ t }}</span>{% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑧ 핵심 요약 + 결론 -->
+  <div class="section-title">핵심 요약 · 결론</div>
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="summary-title">📌 투자 핵심 포인트</div>
+      {% for p in summary_points %}
+      <div class="summary-point">
+        <span class="num">{{ p.num }}</span>
+        <span class="body"><strong>{{ p.title }}</strong> — {{ p.body }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="summary-card">
+      <div class="summary-title">⚡ 리스크 & 결론</div>
+      {% for r in risks %}
+      <div class="summary-point risk">
+        <span class="num">{{ r.num }}</span>
+        <span class="body"><strong>{{ r.title }}</strong> — {{ r.body }}</span>
+      </div>
+      {% endfor %}
+      <div class="verdict-box">
+        <div class="verdict-label">최종 판단</div>
+        <div class="verdict-text">{{ verdict.label }}</div>
+        <div class="verdict-sub">{{ verdict.sub }}</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  {{ ticker }} · {{ display_name }} 분석 리포트 | 생성일: {{ generated_at }} | 본 자료는 투자 참고용이며 투자 손익에 대한 책임은 투자자 본인에게 있습니다.
+  <br>출처: {{ sources | join(' · ') }}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% include "_candle.js.j2" %}
+</script>
+{% endblock %}
