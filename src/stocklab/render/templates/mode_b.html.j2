@@ -1,0 +1,239 @@
+{% extends "base.html.j2" %}
+{% block extra_css %}
+.theme-badge {
+  background: var(--purple); color: #fff; font-family: var(--mono);
+  font-weight: 600; font-size: 14px; padding: 6px 14px; letter-spacing: 2px;
+}
+.matrix-rank { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--accent); }
+.momentum-cell { font-family: var(--mono); font-weight: 600; }
+.momentum-cell.green { color: var(--green); }
+.momentum-cell.yellow { color: var(--yellow); }
+.momentum-cell.red { color: var(--red); }
+.matrix-stars { color: var(--yellow); font-size: 14px; }
+
+.pick-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.pick-card { background: var(--card); border: 1px solid var(--border); padding: 20px; position: relative; }
+.pick-card.gold { border-top: 3px solid #ffd93d; }
+.pick-card.silver { border-top: 3px solid #c0c0c0; }
+.pick-card.bronze { border-top: 3px solid #cd7f32; }
+.pick-rank-badge { font-family: var(--mono); font-size: 28px; font-weight: 700; color: var(--text2); margin-bottom: 8px; }
+.pick-card.gold .pick-rank-badge { color: #ffd93d; }
+.pick-card.silver .pick-rank-badge { color: #c0c0c0; }
+.pick-card.bronze .pick-rank-badge { color: #cd7f32; }
+.pick-headline { font-size: 14px; font-weight: 600; color: var(--accent2); margin: 12px 0; line-height: 1.4; }
+.pick-reason { font-size: 11px; color: var(--text2); margin-bottom: 6px; padding-left: 14px; position: relative; line-height: 1.5; }
+.pick-reason::before { content: '▸'; color: var(--text3); position: absolute; left: 0; }
+.pick-meta { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 10px; color: var(--text3); }
+.pick-meta div { margin: 3px 0; }
+.pick-cta {
+  margin-top: 12px; padding: 8px;
+  background: rgba(0,212,255,0.08);
+  border: 1px solid rgba(0,212,255,0.2);
+  text-align: center; font-family: var(--mono); font-size: 11px; color: var(--accent);
+}
+
+.group-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+.group-card { background: var(--card); border: 1px solid var(--border); padding: 14px; }
+.group-icon { font-size: 18px; }
+.group-title { font-size: 11px; font-weight: 700; color: var(--accent); margin: 6px 0 10px; font-family: var(--mono); text-transform: uppercase; }
+.group-stock { font-size: 11px; color: var(--text); padding: 5px 0; border-bottom: 1px solid var(--border); }
+.group-stock:last-child { border-bottom: none; }
+.group-stock .blurb { font-size: 10px; color: var(--text3); display: block; }
+.group-comment { font-size: 10px; color: var(--text3); margin-top: 8px; line-height: 1.5; font-style: italic; }
+{% endblock %}
+
+{% block content %}
+<div class="header">
+  <div class="header-top">
+    <div class="ticker-block">
+      <div class="ticker-row">
+        <div class="theme-badge">THEME</div>
+        <div class="company-name">{{ theme }}</div>
+      </div>
+      <div class="company-sub">발굴 리포트 · {{ header_meta.stock_count }}개 종목 · {{ generated_at }} 기준</div>
+    </div>
+    <div class="price-block">
+      <div class="current-price" style="color: var(--accent2); font-size: 28px;">{{ header_meta.avg_return_1y_str }}</div>
+      <div class="change-badge pos" style="background: rgba(139,92,246,0.15); color: var(--purple); border-color: rgba(139,92,246,0.3);">
+        Theme Score {{ header_meta.momentum_score }}
+      </div>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="meta-item"><span class="meta-label">테마 시총 합</span><span class="meta-value">{{ header_meta.total_cap_str }}</span></div>
+    <div class="meta-item"><span class="meta-label">평균 P/E</span><span class="meta-value">{{ header_meta.avg_pe_str }}</span></div>
+    <div class="meta-item"><span class="meta-label">평균 수익률</span><span class="meta-value">{{ header_meta.avg_return_1y_str }}</span></div>
+    <div class="meta-item"><span class="meta-label">정책 점수</span><span class="meta-value">{{ header_meta.policy_score }}</span></div>
+    <div class="meta-item"><span class="meta-label">모멘텀 점수</span><span class="meta-value">{{ header_meta.momentum_score }}</span></div>
+    <div class="meta-item"><span class="meta-label">종목 수</span><span class="meta-value">{{ header_meta.stock_count }}</span></div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ② 테마 개요 -->
+  <div class="section-title">테마 개요 · 강점 / 리스크 / 매크로</div>
+  <div class="industry-grid">
+    <div class="card">
+      <div class="card-title">정의 · 시장 규모 · 정책</div>
+      <div style="font-size: 12px; color: var(--text2); line-height: 1.7;">
+        <p style="margin-bottom: 10px;">{{ overview.definition }}</p>
+        <p style="margin-bottom: 6px;"><strong>시장 규모</strong> — {{ overview.size_growth }}</p>
+        <p style="margin-bottom: 6px;"><strong>정책 / 이벤트</strong> — {{ overview.policy_event }}</p>
+        <p><strong>글로벌 트렌드</strong> — {{ overview.global_trend }}</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">강점 / 리스크 / 매크로</div>
+      <div class="tag-group">
+        <div class="tag-group-title">✅ 강점·기회</div>
+        {% for t in pos_tags %}<span class="industry-tag tag-pos">{{ t }}</span>{% endfor %}
+      </div>
+      <div class="tag-group">
+        <div class="tag-group-title">⚠️ 리스크·약점</div>
+        {% for t in neg_tags %}<span class="industry-tag tag-neg">{{ t }}</span>{% endfor %}
+      </div>
+      <div class="tag-group">
+        <div class="tag-group-title">🟡 매크로 변수</div>
+        {% for t in neu_tags %}<span class="industry-tag tag-neu">{{ t }}</span>{% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 종목 매트릭스 -->
+  <div class="section-title">종목 매트릭스 · 모멘텀 정렬</div>
+  <table class="strategy-table">
+    <thead>
+      <tr>
+        <th>순위</th><th>티커</th><th>회사명</th><th>시장</th><th>시총</th>
+        <th>수익률</th><th>Fwd P/E</th><th>모멘텀</th><th>추천도</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in matrix %}
+      <tr>
+        <td><span class="matrix-rank">#{{ r.rank }}</span></td>
+        <td>{{ r.ticker }}</td>
+        <td>{{ r.name }}</td>
+        <td>{{ r.market }}</td>
+        <td>{{ r.market_cap_str }}</td>
+        <td>{{ r.return_1y_str }}</td>
+        <td>{{ r.pe_forward_str }}</td>
+        <td><span class="momentum-cell {{ r.momentum_color }}">{{ "%.1f"|format(r.momentum) }}</span></td>
+        <td><span class="matrix-stars">{{ r.stars }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- ④ Top 3 픽 -->
+  <div class="section-title">Top 3 픽 · 우선 검토</div>
+  <div class="pick-grid">
+    {% for p in top_picks %}
+    <div class="pick-card {{ p.medal }}">
+      <div class="pick-rank-badge">#{{ p.rank }}</div>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <div class="ticker-badge" style="font-size: 12px;">{{ p.ticker }}</div>
+        <div style="font-size: 14px; font-weight: 600;">{{ p.name }}</div>
+      </div>
+      <div class="pick-headline">{{ p.headline }}</div>
+      {% for r in p.reasons %}<div class="pick-reason">{{ r }}</div>{% endfor %}
+      <div class="pick-meta">
+        <div>{{ p.entry_str }}</div>
+        <div>{{ p.target_str }}</div>
+        <div>{{ p.risk_str }}</div>
+      </div>
+      <div class="pick-cta">💬 상세 분석: 채팅에 '{{ p.ticker }}' 입력</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ⑤ 분류별 그룹 -->
+  <div class="section-title">분류별 그룹 · 대장 / 성장 / 가치 / 배당</div>
+  <div class="group-grid">
+    {% for g in groups %}
+    <div class="group-card">
+      <div class="group-icon">{{ g.icon }}</div>
+      <div class="group-title">{{ g.title }}</div>
+      {% for s in g.stocks %}
+      <div class="group-stock">{{ s.name }} <span class="blurb">{{ s.blurb }}</span></div>
+      {% endfor %}
+      <div class="group-comment">{{ g.comment }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ⑥ 매크로 + 진입 전략 -->
+  <div class="section-title">매크로 환경 · 진입 전략</div>
+  <div class="industry-grid">
+    <div class="card">
+      <div class="card-title">매크로 변수 영향</div>
+      <div style="font-size: 12px; color: var(--text2); line-height: 1.7;">
+        <p style="margin-bottom: 6px;"><strong>환율</strong> — {{ macro.currency_note }}</p>
+        <p style="margin-bottom: 6px;"><strong>금리</strong> — {{ macro.rate_note }}</p>
+        <p style="margin-bottom: 6px;"><strong>정책</strong> — {{ macro.policy_note }}</p>
+        <p><strong>경기</strong> — {{ macro.global_cycle }}</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">시점별 진입 전략</div>
+      <div style="font-size: 12px; color: var(--text2); line-height: 1.7;">
+        <p style="margin-bottom: 6px;"><strong>지금</strong> — {{ entry_strategy.now }}</p>
+        <p style="margin-bottom: 6px;"><strong>조정 시</strong> — {{ entry_strategy.dip }}</p>
+        <p><strong>과열 시</strong> — {{ entry_strategy.overheat }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑦ 결론 -->
+  <div class="section-title">결론 · 다음 단계</div>
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="summary-title">📋 테마 종합</div>
+      <div class="summary-point">
+        <span class="num">01</span>
+        <span class="body"><strong>테마 모멘텀 점수</strong> — {{ header_meta.momentum_score }}</span>
+      </div>
+      <div class="summary-point">
+        <span class="num">02</span>
+        <span class="body"><strong>평균 P/E</strong> — {{ header_meta.avg_pe_str }}, 시총 합 {{ header_meta.total_cap_str }}</span>
+      </div>
+      <div class="summary-point">
+        <span class="num">03</span>
+        <span class="body"><strong>평균 수익률</strong> — {{ header_meta.avg_return_1y_str }}</span>
+      </div>
+      <div class="summary-point">
+        <span class="num">04</span>
+        <span class="body"><strong>Top 픽</strong> — {{ top_picks[0].name if top_picks else 'N/A' }}{% if top_picks|length > 1 %}, {{ top_picks[1].name }}{% endif %}{% if top_picks|length > 2 %}, {{ top_picks[2].name }}{% endif %}</span>
+      </div>
+      <div class="summary-point">
+        <span class="num">05</span>
+        <span class="body"><strong>추천 비중</strong> — {{ portfolio_weight }}</span>
+      </div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-title">⚡ 다음 단계</div>
+      <div style="font-size: 12px; color: var(--text2); line-height: 1.7; margin-bottom: 16px;">
+        <p style="margin-bottom: 8px;">특정 종목 상세 분석을 원하시면 채팅창에 티커를 입력하세요.</p>
+        <p style="font-family: var(--mono); font-size: 11px; color: var(--text3);">
+          예시:<br>
+          · 한미반도체 → 9섹션 상세 리포트<br>
+          · 042700 → 종목코드도 가능<br>
+          · NVDA vs AMD → 비교 리포트
+        </p>
+      </div>
+      <div class="verdict-box">
+        <div class="verdict-label">테마 종합 판단</div>
+        <div class="verdict-text">{{ verdict.label }}</div>
+        <div class="verdict-sub">{{ verdict.sub }}</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  {{ theme }} 테마 발굴 리포트 | 생성일: {{ generated_at }} | 본 자료는 투자 참고용이며 투자 손익에 대한 책임은 투자자 본인에게 있습니다.
+  <br>출처: {{ sources | join(' · ') }}
+</div>
+{% endblock %}

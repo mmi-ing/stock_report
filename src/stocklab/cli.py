@@ -112,8 +112,19 @@ def main(
         rc = _run_mode_a(spec, no_llm=no_llm, out_dir=out, open_browser=open_browser)
         raise typer.Exit(code=rc)
     elif spec.mode == "B":
-        typer.echo(f"[Mode B] theme={spec.theme} candidates={spec.candidates}")
-        typer.echo("(Mode B 구현은 Step 5)")
+        from stocklab.analysts import theme as analyst_theme
+        typer.echo(f"[Mode B] theme={spec.theme} candidates={len(spec.candidates)}")
+        typer.echo(f"  → 후보 {len(spec.candidates)}개 병렬 fetch 중...")
+        ctx = analyst_theme.build_context(
+            theme=spec.theme or raw, candidates=spec.candidates, weights=spec.weights
+        )
+        typer.echo(f"  → 매트릭스 {len(ctx['matrix'])}행, Top {len(ctx['top_picks'])}픽")
+        typer.echo("[Mode B] HTML 렌더링 중...")
+        html = renderer.render("mode_b.html.j2", ctx)
+        path = output.save(html, key=spec.theme or "theme", out_dir=out)
+        typer.echo(f"[ok] {path}")
+        if open_browser:
+            webbrowser.open(path.resolve().as_uri())
         raise typer.Exit(code=0)
     elif spec.mode == "C":
         typer.echo(f"[Mode C] {spec.left} vs {spec.right}")
