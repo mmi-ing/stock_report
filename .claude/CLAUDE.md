@@ -50,7 +50,7 @@ docs/spec.md                   # 현재 README 의 시스템 프롬프트 명세
 ## 구현 진행 체크리스트 (한 단계씩 완료 후 체크)
 
 - [x] **Step 1 — Skeleton** (2026-05-07): `pyproject.toml`, venv, `cli.py` + `router.py` + `config.py` + `data/theme_pool.py`, 22 router 테스트 통과. `.venv/bin/python -m stocklab NVDA` / `"소부장 추천"` / `"NVDA vs AMD"` 모드 분기 검증.
-- [ ] **Step 2 — Data + Indicators**: `data/yahoo.py`, `indicators.py`, 골든 케이스 테스트 통과
+- [x] **Step 2 — Data + Indicators** (2026-05-07): `indicators.py` (ema/rsi14/macd/volume_profile + IndicatorBundle), `data/yahoo.py` (StockSnapshot/FinancialBlock/NewsItem + fetch + KR .KS/.KQ 폴백), 37 테스트 통과. NVDA·005930 실데이터 fetch 검증 (가격·시총·26주봉·뉴스 5개).
 - [ ] **Step 3 — Mode A 렌더**: `base.html.j2`, `mode_a.html.j2`, 정적 더미 narrative, `python -m stocklab NVDA --no-llm` 으로 9 섹션 HTML 생성 확인
 - [ ] **Step 4 — Narrative**: anthropic 연동 + `--no-llm` 폴백 + `~/.cache/stocklab/` 캐시
 - [ ] **Step 5 — Mode B**: 테마 풀, 매트릭스 점수, Top3 카드, `mode_b.html.j2`
