@@ -55,7 +55,7 @@ docs/spec.md                   # 현재 README 의 시스템 프롬프트 명세
 - [x] **Step 4 — Narrative** (2026-05-07): `narrative.py` Claude opus-4-7 tool_use JSON Schema 강제 (시나리오 3·요약 5·리스크 3·verdict 4분류). `~/.cache/stocklab/narrative/{ticker}-{date}.json` 캐시. API 키 / 호출 실패 시 결정론 폴백. `analysts/stock.py` 가 LLM 시나리오에 코드 계산 target_range 주입.
 - [x] **Step 5 — Mode B** (2026-05-07): `analysts/theme.py` 후보 종목 ThreadPoolExecutor 병렬 fetch + 모멘텀 점수 (1Y 수익률·RSI·P/E·매출성장 가중) + 매트릭스 정렬 + Top3 (gold/silver/bronze) + 4그룹 (대장/성장/가치/배당) + 매크로/진입전략. `mode_b.html.j2` 보라색 THEME 배지로 7섹션. 검증: "AI 반도체" 8행 / "소부장 추천" 9행 모두 정상.
 - [x] **Step 6 — Mode C** (2026-05-07): `analysts/compare.py` 두 종목 병렬 fetch + 7항목 우월성 매트릭스 (매출성장/이익률/부채/모멘텀/밸류/배당/수익률) + 비중 추천 (5:5/6:4/7:3). `mode_c.html.j2` 좌우 2컬럼 + 차트 + 우월성 매트릭스 ✓ 표시 + verdict 박스. 검증: NVDA vs AMD 4:3 / 삼성전자 vs SK하이닉스 3:4.
-- [ ] **Step 7 — Polish**: `@media print` PDF 검증, KR 종목 N/A 강건성, README 사용자 가이드 재작성, `docs/spec.md` 명세 이전, `.gitignore` 보강
+- [x] **Step 7 — Polish** (2026-05-07): `docs/spec.md` 에 initial commit README 의 시스템 프롬프트 명세(678줄) 보관. `docs/usage.md` 에 CLI 사용 가이드 (설치·모드별 예시·옵션·환경변수·PDF 저장·트러블슈팅·자동화). `.gitignore` 이미 정리됨. PDF print CSS 검증 (`@media print` / `page-break-inside: avoid` / 화이트 모드 변환 모두 적용). README.md 는 사용자 직접 수정 중이라 건드리지 않음. **전체 7단계 완료. 37 테스트 통과. 4 자산군 + 2 테마 + 2 비교 = 8개 리포트 모두 생성 검증.**
 
 ## 새 세션 시작 시 행동 강령
 
