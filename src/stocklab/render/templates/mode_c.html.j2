@@ -1,0 +1,163 @@
+{% extends "base.html.j2" %}
+{% block extra_css %}
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); margin-bottom: 20px; }
+.compare-side { background: var(--card); padding: 20px; }
+.compare-side .name { font-size: 18px; font-weight: 700; margin-top: 6px; }
+.compare-side .sub { font-size: 11px; color: var(--text2); font-family: var(--mono); margin-top: 4px; }
+.compare-price { font-family: var(--mono); font-size: 28px; font-weight: 600; margin-top: 12px; }
+.compare-chart-wrap { height: 180px; padding: 10px; background: var(--bg2); }
+.cmp-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.cmp-meta .item { font-family: var(--mono); font-size: 11px; }
+.cmp-meta .label { color: var(--text3); font-size: 9px; text-transform: uppercase; letter-spacing: 1px; }
+.cmp-meta .value { font-size: 13px; margin-top: 2px; }
+
+.matrix-table { width: 100%; border-collapse: collapse; font-family: var(--mono); margin-bottom: 20px; }
+.matrix-table th { background: var(--bg3); color: var(--accent); font-size: 9px; padding: 10px 14px; text-transform: uppercase; letter-spacing: 1px; text-align: left; border-bottom: 1px solid var(--border); }
+.matrix-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12px; background: var(--card); }
+.matrix-table .winner { color: var(--accent2); font-weight: 600; }
+.matrix-table .winner-mark { color: var(--yellow); font-weight: 700; }
+
+.recommend-box {
+  background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(139,92,246,0.04));
+  border: 1px solid rgba(0,212,255,0.2);
+  padding: 24px; margin-bottom: 20px;
+}
+.recommend-weight { font-family: var(--mono); font-size: 24px; font-weight: 700; color: var(--accent2); text-align: center; }
+.recommend-verdict { text-align: center; color: var(--text); font-size: 14px; margin-top: 8px; }
+.recommend-cases { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+.case-card { background: var(--card); border: 1px solid var(--border); padding: 14px; font-size: 12px; color: var(--text2); line-height: 1.6; }
+{% endblock %}
+
+{% block content %}
+<div class="header">
+  <div class="header-top">
+    <div class="ticker-block">
+      <div class="ticker-row">
+        <div class="ticker-badge">VS</div>
+        <div class="company-name">{{ left.ticker }} vs {{ right.ticker }}</div>
+      </div>
+      <div class="company-sub">{{ left.name }} 와 {{ right.name }} 비교 분석</div>
+    </div>
+    <div class="price-block">
+      <div style="font-family: var(--mono); font-size: 12px; color: var(--text3);">우월성 매트릭스 승</div>
+      <div style="font-family: var(--mono); font-size: 22px; font-weight: 600;">
+        <span style="color: var(--accent);">{{ final.left_wins }}</span>
+        <span style="color: var(--text3);"> : </span>
+        <span style="color: var(--purple);">{{ final.right_wins }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- 좌우 헤더 + 차트 + 메타 -->
+  <div class="section-title">종목 개요 · 좌우 비교</div>
+  <div class="compare-grid">
+    {% for side, key in [(left, 'L'), (right, 'R')] %}
+    <div class="compare-side">
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <div class="ticker-badge">{{ side.ticker }}</div>
+        <div class="change-badge {{ 'pos' if side.change_pos else 'neg' }}">{{ side.change_str }}</div>
+      </div>
+      <div class="name">{{ side.name }}</div>
+      <div class="sub">{{ side.exchange }} · {{ side.currency }}</div>
+      <div class="compare-price">{{ side.price_symbol }}{{ side.price_str }}</div>
+      <div class="compare-chart-wrap"><canvas id="chart_{{ key }}"></canvas></div>
+      <div class="cmp-meta">
+        <div class="item"><span class="label">시가총액</span><div class="value">{{ side.market_cap_str }}</div></div>
+        <div class="item"><span class="label">Forward P/E</span><div class="value">{{ side.pe_str }}</div></div>
+        <div class="item"><span class="label">P/S (TTM)</span><div class="value">{{ side.ps_str }}</div></div>
+        <div class="item"><span class="label">배당률</span><div class="value">{{ side.div_str }}</div></div>
+        <div class="item"><span class="label">RSI(14)</span><div class="value">{{ side.rsi_str }}</div></div>
+        <div class="item"><span class="label">기간 수익률</span><div class="value">{{ side.return_str }}</div></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- 우월성 매트릭스 -->
+  <div class="section-title">우월성 매트릭스 · 항목별 승자</div>
+  <table class="matrix-table">
+    <thead>
+      <tr>
+        <th>항목</th>
+        <th>{{ left.ticker }}</th>
+        <th>{{ right.ticker }}</th>
+        <th>승자</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in matrix %}
+      <tr>
+        <td>{{ m.label }}</td>
+        <td class="{{ 'winner' if m.winner == 'left' else '' }}">
+          {% if m.winner == 'left' %}<span class="winner-mark">✓</span> {% endif %}{{ m.left_value }}
+        </td>
+        <td class="{{ 'winner' if m.winner == 'right' else '' }}">
+          {% if m.winner == 'right' %}<span class="winner-mark">✓</span> {% endif %}{{ m.right_value }}
+        </td>
+        <td>
+          {% if m.winner == 'left' %}{{ left.ticker }}
+          {% elif m.winner == 'right' %}{{ right.ticker }}
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- 최종 추천 -->
+  <div class="section-title">최종 추천 · 비중 가이드</div>
+  <div class="recommend-box">
+    <div class="recommend-weight">{{ final.weight }}</div>
+    <div class="recommend-verdict">{{ final.verdict }}</div>
+    <div class="recommend-cases">
+      <div class="case-card">{{ final.left_case }}</div>
+      <div class="case-card">{{ final.right_case }}</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  {{ left.ticker }} vs {{ right.ticker }} 비교 분석 | 생성일: {{ generated_at }} | 본 자료는 투자 참고용이며 투자 손익에 대한 책임은 투자자 본인에게 있습니다.
+  <br>출처: {{ sources | join(' · ') }}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PALETTE = {{ palette | tojson | safe }};
+const LEFT = {{ left | tojson_safe | safe }};
+const RIGHT = {{ right | tojson_safe | safe }};
+
+function makeCmpChart(id, side) {
+  const el = document.getElementById(id);
+  if (!el || !side.chart_close.length) return;
+  new Chart(el.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: side.chart_labels,
+      datasets: [
+        { label: 'Close', data: side.chart_close, borderColor: PALETTE.accent, borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.2 },
+        { label: 'EMA20', data: side.chart_ema20, borderColor: '#ffd93d', borderWidth: 1.2, pointRadius: 0, fill: false, tension: 0.2, borderDash: [3, 3] },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: PALETTE.text3, font: { size: 8 }, maxRotation: 45 }, grid: { display: false } },
+        y: { position: 'right', ticks: { color: PALETTE.text3, font: { size: 8 }, callback: v => side.price_symbol + v.toLocaleString() }, grid: { color: 'rgba(30,45,69,0.4)' } },
+      },
+      plugins: { legend: { display: false } },
+    },
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  makeCmpChart('chart_L', LEFT);
+  makeCmpChart('chart_R', RIGHT);
+});
+</script>
+{% endblock %}

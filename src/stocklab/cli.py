@@ -127,8 +127,24 @@ def main(
             webbrowser.open(path.resolve().as_uri())
         raise typer.Exit(code=0)
     elif spec.mode == "C":
+        from stocklab.analysts import compare as analyst_compare
         typer.echo(f"[Mode C] {spec.left} vs {spec.right}")
-        typer.echo("(Mode C 구현은 Step 6)")
+        typer.echo("  → 두 종목 병렬 fetch 중...")
+        try:
+            ctx = analyst_compare.build_context(
+                left_raw=spec.left or "", right_raw=spec.right or "", weights=spec.weights
+            )
+        except RuntimeError as e:
+            typer.echo(f"[error] {e}", err=True)
+            raise typer.Exit(code=1)
+        typer.echo(f"  → 매트릭스 {len(ctx['matrix'])}항목, 승: {ctx['final']['left_wins']}:{ctx['final']['right_wins']}")
+        typer.echo("[Mode C] HTML 렌더링 중...")
+        html = renderer.render("mode_c.html.j2", ctx)
+        key = f"{ctx['left']['ticker']}_vs_{ctx['right']['ticker']}"
+        path = output.save(html, key=key, out_dir=out)
+        typer.echo(f"[ok] {path}")
+        if open_browser:
+            webbrowser.open(path.resolve().as_uri())
         raise typer.Exit(code=0)
 
 
