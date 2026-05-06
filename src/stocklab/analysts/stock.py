@@ -432,12 +432,21 @@ def build_context(
     }
 
     if narrative_override:
-        scenarios = narrative_override.get("scenarios") or _build_scenarios_deterministic(snap, ind)
+        # Claude 가 만든 narrative — target_range 는 코드 계산값으로 보강
+        code_scenarios = _build_scenarios_deterministic(snap, ind)
+        code_by_kind = {s.kind: s for s in code_scenarios}
+        scenarios = narrative_override.get("scenarios") or [asdict(s) for s in code_scenarios]
+        for s in scenarios:
+            if isinstance(s, dict) and not s.get("target_range") and s.get("kind") in code_by_kind:
+                s["target_range"] = code_by_kind[s["kind"]].target_range
+                s.setdefault("emoji", {"bull": "🚀", "neutral": "📊", "bear": "🐻"}.get(s["kind"], ""))
+                s.setdefault("title", {"bull": "강세 시나리오", "neutral": "중립 시나리오", "bear": "하락 시나리오"}.get(s["kind"], ""))
         points = narrative_override.get("summary_points") or _build_summary_deterministic(snap, ind)[0]
         risks = narrative_override.get("risks") or _build_summary_deterministic(snap, ind)[1]
         verdict = narrative_override.get("verdict") or _build_summary_deterministic(snap, ind)[2]
     else:
-        scenarios = _build_scenarios_deterministic(snap, ind)
+        scenarios_obj = _build_scenarios_deterministic(snap, ind)
+        scenarios = [asdict(s) for s in scenarios_obj]
         points, risks, verdict = _build_summary_deterministic(snap, ind)
 
     industry_tags = IndustryTags(
@@ -478,7 +487,7 @@ def build_context(
         "indicator_panel": indicator_panel,
         "fin_cards": [asdict(c) for c in _build_fin_cards(snap)],
         "strategy_rows": [asdict(r) for r in _build_strategy_rows(snap, ind)],
-        "scenarios": [asdict(s) for s in scenarios],
+        "scenarios": scenarios,
         "industry_rows": [asdict(r) for r in industry_rows],
         "industry_tags": asdict(industry_tags),
         "summary_points": points,

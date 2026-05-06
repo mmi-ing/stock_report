@@ -54,13 +54,22 @@ def _run_mode_a(spec: RouteSpec, no_llm: bool, out_dir: Path, open_browser: bool
         typer.echo("[error] OHLC 데이터가 없어 지표 계산 불가.", err=True)
         return 1
 
+    narrative_data = None
+    if not no_llm:
+        from stocklab import narrative as narr_mod
+        typer.echo("[Mode A] narrative 생성 중 (Claude opus-4-7)...")
+        narrative_data = narr_mod.generate(snap, ind, weights=spec.weights)
+        if narrative_data is None:
+            typer.echo("  → API 키 미설정 또는 호출 실패 → 결정론 폴백", err=True)
+        else:
+            typer.echo("  → 시나리오 3개·요약 5개·리스크 3개·verdict 수신")
+
     typer.echo("[Mode A] HTML 렌더링 중...")
     if no_llm:
         typer.echo("  → narrative 결정론 폴백 (--no-llm)")
-        ctx = analyst_stock.build_context(snap, ind, weights=spec.weights)
-    else:
-        # Step 4 에서 narrative LLM 호출 추가됨
-        ctx = analyst_stock.build_context(snap, ind, weights=spec.weights)
+    ctx = analyst_stock.build_context(
+        snap, ind, weights=spec.weights, narrative_override=narrative_data
+    )
 
     html = renderer.render("mode_a.html.j2", ctx)
     path = output.save(html, key=spec.display_name or spec.ticker, out_dir=out_dir)

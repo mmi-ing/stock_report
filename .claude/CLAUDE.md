@@ -52,7 +52,7 @@ docs/spec.md                   # 현재 README 의 시스템 프롬프트 명세
 - [x] **Step 1 — Skeleton** (2026-05-07): `pyproject.toml`, venv, `cli.py` + `router.py` + `config.py` + `data/theme_pool.py`, 22 router 테스트 통과. `.venv/bin/python -m stocklab NVDA` / `"소부장 추천"` / `"NVDA vs AMD"` 모드 분기 검증.
 - [x] **Step 2 — Data + Indicators** (2026-05-07): `indicators.py` (ema/rsi14/macd/volume_profile + IndicatorBundle), `data/yahoo.py` (StockSnapshot/FinancialBlock/NewsItem + fetch + KR .KS/.KQ 폴백), 37 테스트 통과. NVDA·005930 실데이터 fetch 검증 (가격·시총·26주봉·뉴스 5개).
 - [x] **Step 3 — Mode A 렌더** (2026-05-07): Jinja2 환경 + `base.html.j2` (CSS 변수·PDF 버튼·@media print) + `_candle.js.j2` (Chart.js plugin) + `mode_a.html.j2` (9 섹션) + `analysts/stock.py` (ReportContext) + `output.py`. CLI 연결 후 NVDA / 005930 / BTC-USD / QQQ 4종 자산군 HTML 생성 검증 (각 42~43KB, 9 섹션·EMA 4종·RSI/MACD/매물대 모두 포함). narrative는 결정론 폴백 (Step 4에서 LLM 교체).
-- [ ] **Step 4 — Narrative**: anthropic 연동 + `--no-llm` 폴백 + `~/.cache/stocklab/` 캐시
+- [x] **Step 4 — Narrative** (2026-05-07): `narrative.py` Claude opus-4-7 tool_use JSON Schema 강제 (시나리오 3·요약 5·리스크 3·verdict 4분류). `~/.cache/stocklab/narrative/{ticker}-{date}.json` 캐시. API 키 / 호출 실패 시 결정론 폴백. `analysts/stock.py` 가 LLM 시나리오에 코드 계산 target_range 주입.
 - [ ] **Step 5 — Mode B**: 테마 풀, 매트릭스 점수, Top3 카드, `mode_b.html.j2`
 - [ ] **Step 6 — Mode C**: 비교 분석, 우월성 매트릭스, `mode_c.html.j2`
 - [ ] **Step 7 — Polish**: `@media print` PDF 검증, KR 종목 N/A 강건성, README 사용자 가이드 재작성, `docs/spec.md` 명세 이전, `.gitignore` 보강
