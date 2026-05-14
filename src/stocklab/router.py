@@ -110,10 +110,9 @@ def parse(raw: str) -> RouteSpec:
 
     tokens = text_no_weights.split()
 
-    # [2순위] 단일 토큰 + 명시적 티커 패턴 → Mode A
-    # 다중 토큰일 때는 "AI 반도체" 같은 테마를 우선해야 하므로 single token 일 때만.
+    # [2순위] 단일 토큰 + 명시적 티커 패턴 → Mode A (대소문자 무관)
     if len(tokens) == 1:
-        candidate = tokens[0]
+        candidate = tokens[0].upper()
         if (
             RE_CRYPTO.match(candidate)
             or RE_KR_SUFFIX.match(candidate)
@@ -130,8 +129,7 @@ def parse(raw: str) -> RouteSpec:
                 weights=weights,
             )
 
-    # [3순위] 한국 회사명 사전 — 테마 키와 부분 충돌 방지 위해 테마보다 먼저 검사.
-    # 가장 긴 회사명 우선으로 매칭해 "삼성전자" 가 "전자" 같은 일부 매칭에 우선.
+    # [3순위] 한국 회사명 사전 — 정확히 포함되는 경우 우선 (긴 이름 먼저)
     for name in sorted(KR_NAME_TO_TICKER.keys(), key=len, reverse=True):
         if name in text_no_weights:
             return RouteSpec(
@@ -142,6 +140,26 @@ def parse(raw: str) -> RouteSpec:
                 display_name=name,
                 weights=weights,
             )
+
+    # [3.5순위] 부분 이름 매칭 — "하이닉스" → "SK하이닉스" 등 포함 검색
+    partial = [(n, t) for n, t in KR_NAME_TO_TICKER.items() if text_no_weights in n]
+    if len(partial) == 1:
+        name, ticker_val = partial[0]
+        return RouteSpec(
+            mode="A",
+            raw_input=raw,
+            ticker=ticker_val,
+            asset_class="kr_stock",
+            display_name=name,
+            weights=weights,
+        )
+    if len(partial) > 1:
+        return RouteSpec(
+            mode="ambiguous",
+            raw_input=raw,
+            weights=weights,
+            ambiguous_options=[f"{n} ({t})" for n, t in partial],
+        )
 
     # [4순위] 테마 키워드 — 원문 / "수혜주" 등 제거 후 두 번 시도
     found = theme_pool.find_theme(text_no_weights)
