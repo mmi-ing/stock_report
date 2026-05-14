@@ -16,6 +16,8 @@ st.set_page_config(page_title="Stock Lab", page_icon="📊", layout="wide")
 st.title("📊 Stock Lab")
 st.caption("개별 종목 · 테마 발굴 · 종목 비교 리포트")
 
+_auto_query = st.session_state.pop("auto_run_query", None)
+
 col1, col2 = st.columns([4, 1])
 with col1:
     query = st.text_input(
@@ -28,8 +30,8 @@ with col2:
 
 run = st.button("리포트 생성", type="primary", use_container_width=True)
 
-if "selected_query" in st.session_state:
-    query = st.session_state.pop("selected_query")
+if _auto_query:
+    query = _auto_query
     run = True
 
 if run and query.strip():
@@ -41,7 +43,7 @@ if run and query.strip():
             # "SK하이닉스 (000660.KS)" 형식에서 회사명만 추출
             name = opt.split(" (")[0]
             if st.button(name, key=f"pick_{opt}"):
-                st.session_state["selected_query"] = name
+                st.session_state["auto_run_query"] = name
                 st.rerun()
         st.stop()
 

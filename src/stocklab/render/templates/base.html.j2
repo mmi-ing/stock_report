@@ -315,20 +315,31 @@ body {
 </style>
 </head>
 <body>
-<button class="pdf-btn" onclick="saveAsImage()">📷 이미지 저장</button>
+<div style="position:fixed;top:20px;right:20px;z-index:9999;display:flex;gap:8px;">
+<button class="pdf-btn" onclick="saveAsImage()">📷 이미지</button>
+<button class="pdf-btn" onclick="saveAsHtml()" style="background:#00ff9d;">💾 HTML</button>
+</div>
 {% block content %}{% endblock %}
 {% block scripts %}{% endblock %}
 <script>
 function saveAsImage() {
-  var btn = document.querySelector('.pdf-btn');
-  btn.style.display = 'none';
-  html2canvas(document.body, { scale: 2, useCORS: true, backgroundColor: '#0a0e17' }).then(function(canvas) {
-    btn.style.display = '';
+  var btns = document.querySelectorAll('.pdf-btn');
+  btns.forEach(function(b){ b.style.display='none'; });
+  html2canvas(document.body, { scale: 3, useCORS: true, allowTaint: true, backgroundColor: '#0a0e17', logging: false }).then(function(canvas) {
+    btns.forEach(function(b){ b.style.display=''; });
     var link = document.createElement('a');
     link.download = '{{ display_name }}_report.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
   });
+}
+function saveAsHtml() {
+  var html = '<!doctype html>' + document.documentElement.outerHTML;
+  var blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  var link = document.createElement('a');
+  link.download = '{{ display_name }}_report.html';
+  link.href = URL.createObjectURL(blob);
+  link.click();
 }
 </script>
 </body>
