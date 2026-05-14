@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Literal
 
-from stocklab.config import ETF_TICKERS, KR_NAME_TO_TICKER, WEIGHT_PRESETS
+from stocklab.config import ETF_TICKERS, KR_NAME_TO_TICKER, US_NAME_TO_TICKER, WEIGHT_PRESETS
 from stocklab.data import theme_pool
 
 Mode = Literal["A", "B", "C", "ambiguous"]
@@ -129,7 +129,7 @@ def parse(raw: str) -> RouteSpec:
                 weights=weights,
             )
 
-    # [3순위] 한국 회사명 사전 — 정확히 포함되는 경우 우선 (긴 이름 먼저)
+    # [3순위] 회사명 사전 (KR + US 한글명) — 정확히 포함되는 경우 우선 (긴 이름 먼저)
     for name in sorted(KR_NAME_TO_TICKER.keys(), key=len, reverse=True):
         if name in text_no_weights:
             return RouteSpec(
@@ -140,16 +140,32 @@ def parse(raw: str) -> RouteSpec:
                 display_name=name,
                 weights=weights,
             )
+    for name in sorted(US_NAME_TO_TICKER.keys(), key=len, reverse=True):
+        if name in text_no_weights:
+            return RouteSpec(
+                mode="A",
+                raw_input=raw,
+                ticker=US_NAME_TO_TICKER[name],
+                asset_class="us_stock",
+                display_name=name,
+                weights=weights,
+            )
 
-    # [3.5순위] 부분 이름 매칭 — "하이닉스" → "SK하이닉스" 등 포함 검색
-    partial = [(n, t) for n, t in KR_NAME_TO_TICKER.items() if text_no_weights in n]
+    # [3.5순위] 부분 이름 매칭 — "하이닉스" → "SK하이닉스", "엔비" → "엔비디아" 등
+    partial: list[tuple[str, str, str]] = []
+    for n, t in KR_NAME_TO_TICKER.items():
+        if text_no_weights in n:
+            partial.append((n, t, "kr_stock"))
+    for n, t in US_NAME_TO_TICKER.items():
+        if text_no_weights in n:
+            partial.append((n, t, "us_stock"))
     if len(partial) == 1:
-        name, ticker_val = partial[0]
+        name, ticker_val, klass = partial[0]
         return RouteSpec(
             mode="A",
             raw_input=raw,
             ticker=ticker_val,
-            asset_class="kr_stock",
+            asset_class=klass,  # type: ignore[arg-type]
             display_name=name,
             weights=weights,
         )
@@ -158,7 +174,7 @@ def parse(raw: str) -> RouteSpec:
             mode="ambiguous",
             raw_input=raw,
             weights=weights,
-            ambiguous_options=[f"{n} ({t})" for n, t in partial],
+            ambiguous_options=[f"{n} ({t})" for n, t, _ in partial],
         )
 
     # [4순위] 테마 키워드 — 원문 / "수혜주" 등 제거 후 두 번 시도
