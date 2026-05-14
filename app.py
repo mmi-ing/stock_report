@@ -28,13 +28,21 @@ with col2:
 
 run = st.button("리포트 생성", type="primary", use_container_width=True)
 
+if "selected_query" in st.session_state:
+    query = st.session_state.pop("selected_query")
+    run = True
+
 if run and query.strip():
     spec = parse(query.strip())
 
     if spec.mode == "ambiguous":
-        st.warning(f"'{query}' 가 모호합니다. 더 구체적으로 입력해 주세요.")
+        st.warning(f"'{query}' — 아래 중 하나를 선택하세요.")
         for opt in spec.ambiguous_options:
-            st.write(f"  - {opt}")
+            # "SK하이닉스 (000660.KS)" 형식에서 회사명만 추출
+            name = opt.split(" (")[0]
+            if st.button(name, key=f"pick_{opt}"):
+                st.session_state["selected_query"] = name
+                st.rerun()
         st.stop()
 
     with st.spinner("데이터 수집 · 리포트 생성 중..."):
