@@ -4,7 +4,7 @@ from __future__ import annotations
 import streamlit as st
 import streamlit.components.v1 as components
 
-from stocklab import indicators, output
+from stocklab import indicators
 from stocklab.analysts import stock as analyst_stock
 from stocklab.data import yahoo
 from stocklab.render import renderer
@@ -16,7 +16,7 @@ st.set_page_config(page_title="Stock Lab", page_icon="📊", layout="wide")
 st.title("📊 Stock Lab")
 st.caption("개별 종목 · 테마 발굴 · 종목 비교 리포트")
 
-_auto_query = st.session_state.pop("auto_run_query", None)
+_auto_run = st.session_state.pop("auto_run", False)
 
 col1, col2 = st.columns([4, 1])
 with col1:
@@ -24,26 +24,25 @@ with col1:
         "종목/테마 검색",
         placeholder="NVDA  /  005930  /  AI 반도체  /  NVDA vs AMD",
         label_visibility="collapsed",
+        key="search_input",
     )
 with col2:
     use_ai = st.toggle("AI 서술", value=False)
 
 run = st.button("리포트 생성", type="primary", use_container_width=True)
 
-if _auto_query:
-    query = _auto_query
-    run = True
+effective_query = st.session_state.get("search_input", "").strip()
 
-if run and query.strip():
-    spec = parse(query.strip())
+if (run or _auto_run) and effective_query:
+    spec = parse(effective_query)
 
     if spec.mode == "ambiguous":
-        st.warning(f"'{query}' — 아래 중 하나를 선택하세요.")
+        st.warning(f"'{effective_query}' — 아래 중 하나를 선택하세요.")
         for opt in spec.ambiguous_options:
-            # "SK하이닉스 (000660.KS)" 형식에서 회사명만 추출
             name = opt.split(" (")[0]
             if st.button(name, key=f"pick_{opt}"):
-                st.session_state["auto_run_query"] = name
+                st.session_state["search_input"] = name
+                st.session_state["auto_run"] = True
                 st.rerun()
         st.stop()
 
@@ -57,7 +56,7 @@ if run and query.strip():
                     snap = yahoo.fetch(spec.ticker, spec.asset_class)
 
                 if snap.price is None and snap.ohlc.empty:
-                    st.error(f"'{query}' 데이터를 가져오지 못했습니다.")
+                    st.error(f"'{effective_query}' 데이터를 가져오지 못했습니다.")
                     st.stop()
 
                 ind = indicators.compute(snap.ohlc) if not snap.ohlc.empty else None
@@ -78,7 +77,7 @@ if run and query.strip():
             elif spec.mode == "B":
                 from stocklab.analysts import theme as analyst_theme
                 ctx = analyst_theme.build_context(
-                    theme=spec.theme or query, candidates=spec.candidates, weights=spec.weights
+                    theme=spec.theme or effective_query, candidates=spec.candidates, weights=spec.weights
                 )
                 html = renderer.render("mode_b.html.j2", ctx)
 
@@ -102,6 +101,6 @@ if run and query.strip():
     st.download_button(
         label="HTML 다운로드",
         data=html,
-        file_name=f"{query.strip().replace(' ', '_')}_report.html",
+        file_name=f"{effective_query.replace(' ', '_')}_report.html",
         mime="text/html",
     )
