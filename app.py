@@ -1,8 +1,6 @@
 """Stock Lab — Streamlit 웹 앱."""
 from __future__ import annotations
 
-import os
-
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -13,23 +11,6 @@ from stocklab.render import renderer
 from stocklab.router import parse
 
 st.set_page_config(page_title="Stock Lab", page_icon="📊", layout="wide")
-
-# ── 비밀번호 게이트 ──────────────────────────────────────────────────
-APP_PASSWORD = os.environ.get("APP_PASSWORD", "")
-
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-if not st.session_state.authenticated:
-    st.title("📊 Stock Lab")
-    pw = st.text_input("비밀번호", type="password")
-    if st.button("입장"):
-        if pw == APP_PASSWORD:
-            st.session_state.authenticated = True
-            st.rerun()
-        else:
-            st.error("비밀번호가 틀렸습니다.")
-    st.stop()
 
 # ── 메인 앱 ──────────────────────────────────────────────────────────
 st.title("📊 Stock Lab")
