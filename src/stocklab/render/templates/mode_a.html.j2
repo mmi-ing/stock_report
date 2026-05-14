@@ -12,6 +12,7 @@
     </div>
     <div class="price-block">
       <div class="current-price">{{ price_symbol }}{% if price %}{{ "{:,.2f}".format(price) if currency != "KRW" else "{:,.0f}".format(price) }}{% else %}N/A{% endif %}</div>
+      {% if krw_price_str %}<div style="font-family:var(--mono);font-size:13px;color:var(--text2);">≈ {{ krw_price_str }}</div>{% endif %}
       {% if change_pct is not none %}
       <div class="change-badge {{ 'pos' if change_pct >= 0 else 'neg' }}">{{ change_str }}</div>
       {% endif %}

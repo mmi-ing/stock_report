@@ -91,6 +91,21 @@ def _safe_get(d: dict | None, key: str, default=None):
     return val
 
 
+def fetch_usd_krw() -> float | None:
+    """USD/KRW 실시간 환율. 실패 시 None."""
+    try:
+        import yfinance as yf
+        t = yf.Ticker("KRW=X")
+        hist = t.history(period="1d")
+        if hist is not None and not hist.empty:
+            return float(hist["Close"].iloc[-1])
+        info = t.fast_info
+        rate = getattr(info, "last_price", None)
+        return float(rate) if rate else None
+    except Exception:
+        return None
+
+
 def fetch(ticker: str, asset_class: AssetClass) -> StockSnapshot:
     """yfinance 로 단일 종목 데이터 수집 → StockSnapshot 으로 정규화."""
     import yfinance as yf  # 지연 임포트 — 테스트 환경에서 라이브러리 로딩 비용 회피

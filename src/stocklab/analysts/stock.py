@@ -13,7 +13,7 @@ from typing import Any
 import pandas as pd
 
 from stocklab.config import PALETTE
-from stocklab.data.yahoo import StockSnapshot
+from stocklab.data.yahoo import StockSnapshot, fetch_usd_krw
 from stocklab.indicators import IndicatorBundle
 
 
@@ -462,6 +462,14 @@ def build_context(
         sign = "+" if snap.change_pct >= 0 else ""
         change_str = f"{sign}{snap.change_pct:.2f}%"
 
+    # 미장/크립토 → KRW 환산 (실시간 USD/KRW)
+    krw_price_str = ""
+    if snap.currency == "USD" and p_val:
+        rate = fetch_usd_krw()
+        if rate:
+            krw_val = p_val * rate
+            krw_price_str = f"₩{krw_val:,.0f}"
+
     ctx = {
         "ticker": snap.ticker,
         "display_name": snap.name,
@@ -471,6 +479,7 @@ def build_context(
         "price": p_val,
         "price_str": _scale_money(p_val, snap.currency).lstrip("$").lstrip("₩") if p_val else "N/A",
         "price_symbol": "₩" if snap.currency == "KRW" else "$",
+        "krw_price_str": krw_price_str,
         "change_str": change_str,
         "change_pct": snap.change_pct,
         "market_cap_str": _scale_money(snap.market_cap, snap.currency),
