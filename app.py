@@ -15,7 +15,7 @@ from stocklab.router import parse
 st.set_page_config(page_title="Stock Lab", page_icon="📊", layout="wide")
 
 # ── 비밀번호 게이트 ──────────────────────────────────────────────────
-APP_PASSWORD = os.environ.get("APP_PASSWORD", "stocklab")
+APP_PASSWORD = os.environ.get("APP_PASSWORD", "")
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
