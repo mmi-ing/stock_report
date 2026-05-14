@@ -320,15 +320,38 @@ body {
 {% block scripts %}{% endblock %}
 <script>
 function saveAsImage() {
-  var btns = document.querySelectorAll('.pdf-btn');
-  btns.forEach(function(b){ b.style.display='none'; });
-  html2canvas(document.body, { scale: 3, useCORS: true, allowTaint: true, backgroundColor: '#0a0e17', logging: false }).then(function(canvas) {
-    btns.forEach(function(b){ b.style.display=''; });
-    var link = document.createElement('a');
-    link.download = '{{ display_name }}_report.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  });
+  var btn = document.querySelector('.pdf-btn');
+  btn.style.opacity = '0';
+  setTimeout(function() {
+    html2canvas(document.body, {
+      scale: 2,
+      backgroundColor: '#0a0e17',
+      logging: false,
+      onclone: function(clonedDoc) {
+        var origCanvases = document.querySelectorAll('canvas');
+        var clonedCanvases = clonedDoc.querySelectorAll('canvas');
+        origCanvases.forEach(function(orig, i) {
+          var cl = clonedCanvases[i];
+          if (!cl) return;
+          try {
+            var dataUrl = orig.toDataURL('image/png');
+            var img = clonedDoc.createElement('img');
+            img.src = dataUrl;
+            img.style.width = (orig.offsetWidth || orig.width) + 'px';
+            img.style.height = (orig.offsetHeight || orig.height) + 'px';
+            img.style.display = 'block';
+            cl.parentNode.replaceChild(img, cl);
+          } catch(e) {}
+        });
+      }
+    }).then(function(canvas) {
+      btn.style.opacity = '1';
+      var link = document.createElement('a');
+      link.download = '{{ display_name }}_report.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+  }, 100);
 }
 </script>
 </body>
