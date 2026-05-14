@@ -315,10 +315,7 @@ body {
 </style>
 </head>
 <body>
-<div style="position:fixed;top:20px;right:20px;z-index:9999;display:flex;gap:8px;">
-<button class="pdf-btn" onclick="saveAsImage()">📷 이미지</button>
-<button class="pdf-btn" onclick="saveAsHtml()" style="background:#00ff9d;">💾 HTML</button>
-</div>
+<button class="pdf-btn" onclick="saveAsImage()">📷 이미지 저장</button>
 {% block content %}{% endblock %}
 {% block scripts %}{% endblock %}
 <script>
@@ -332,14 +329,6 @@ function saveAsImage() {
     link.href = canvas.toDataURL('image/png');
     link.click();
   });
-}
-function saveAsHtml() {
-  var html = '<!doctype html>' + document.documentElement.outerHTML;
-  var blob = new Blob([html], {type: 'text/html;charset=utf-8'});
-  var link = document.createElement('a');
-  link.download = '{{ display_name }}_report.html';
-  link.href = URL.createObjectURL(blob);
-  link.click();
 }
 </script>
 </body>
