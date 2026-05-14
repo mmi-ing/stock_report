@@ -57,6 +57,55 @@ docs/spec.md                   # 현재 README 의 시스템 프롬프트 명세
 - [x] **Step 6 — Mode C** (2026-05-07): `analysts/compare.py` 두 종목 병렬 fetch + 7항목 우월성 매트릭스 (매출성장/이익률/부채/모멘텀/밸류/배당/수익률) + 비중 추천 (5:5/6:4/7:3). `mode_c.html.j2` 좌우 2컬럼 + 차트 + 우월성 매트릭스 ✓ 표시 + verdict 박스. 검증: NVDA vs AMD 4:3 / 삼성전자 vs SK하이닉스 3:4.
 - [x] **Step 7 — Polish** (2026-05-07): `docs/spec.md` 에 initial commit README 의 시스템 프롬프트 명세(678줄) 보관. `docs/usage.md` 에 CLI 사용 가이드 (설치·모드별 예시·옵션·환경변수·PDF 저장·트러블슈팅·자동화). `.gitignore` 이미 정리됨. PDF print CSS 검증 (`@media print` / `page-break-inside: avoid` / 화이트 모드 변환 모두 적용). README.md 는 사용자 직접 수정 중이라 건드리지 않음. **전체 7단계 완료. 37 테스트 통과. 4 자산군 + 2 테마 + 2 비교 = 8개 리포트 모두 생성 검증.**
 
+---
+
+## Phase 2 — Streamlit Cloud 공유 (남은 작업)
+
+### 확정된 결정 (2026-05-08)
+- 공유 방식: **Streamlit Cloud** (무료, 24시간, 친구는 URL 클릭만)
+- AI 글쓰기: **켜고 본인 비용 부담** (지인 5~10명이면 월 1~5만원)
+- 차단: **비밀번호 1개** (카톡으로 공유)
+- GitHub Public/Private: 일단 로컬 동작 확인 후 결정
+
+### 남은 작업 체크리스트
+- [ ] **Phase 2a — Streamlit 앱**: `app.py` 검색창 + 9섹션 리포트 표시 + 비번 보호 + 일일 호출 캡
+- [ ] **Phase 2b — GitHub push**: Public/Private 결정 후 푸시
+- [ ] **Phase 2c — Streamlit Cloud 연동**: Secrets 에 `ANTHROPIC_API_KEY` + `APP_PASSWORD` 설정
+- [ ] **Phase 2d — 친구 공유**: URL + 비번 카톡 전송
+
+### 핵심 코드 (작성 예정 `app.py`)
+- Streamlit 1.x, 단일 파일
+- 비번 게이트 (`st.text_input(type='password')` + `st.session_state`)
+- 검색창 → `router.parse` → mode A/B/C 자동 분기 → `renderer.render` → `st.components.v1.html` 로 9섹션 표시
+- AI 토글 (켜면 `narrative.generate` 호출, 꺼지면 `--no-llm` 폴백)
+- 일일 호출 캡 (Streamlit 캐시 + 카운터)
+
+## Phase 3 — 자동매매 로드맵 (단계적, 안전 우선)
+
+자동매매 코드 자체는 1~2주면 만들 수 있으나 **잘 만드는 건 매우 어려움**. 권장 순서:
+
+1. **알림 봇** (다음 우선 작업) — 시나리오 강세 60%+ 되면 텔레그램 전송. 매매는 손으로. 1~2일.
+2. **모의 매매** — Alpaca 페이퍼 / 한투 모의 계좌. 1주.
+3. **백테스트** — 과거 1~3년 시뮬레이션 + 손실 시나리오. 1주.
+4. **소액 자동 매매** — 총자산 1~5%. 위험 시작.
+5. **본격 자동 매매** — 충분한 검증 후.
+
+### 증권사 API 옵션
+- 한국 주식: 한국투자증권 OpenAPI (모의 계좌 무료)
+- 미국 주식: Alpaca (페이퍼 무료, 가장 쉬움)
+- 코인: 업비트 / 바이낸스 (모의 없음, 위험)
+
+### 코드 재활용
+- 분석 모듈의 시나리오 확률·매매 전략 테이블이 그대로 매매 신호로 변환 가능
+- `stocklab.analysts.stock._build_scenarios_deterministic` 의 확률 룰을 알림/매매 트리거로 재사용
+
+### 위험 요소 (기록 — 매매 코드 작성 시 반드시 점검)
+- 알고리즘 버그 = 직접적 금전 손실
+- 슬리피지·수수료로 백테스트 수익이 실전에서 사라질 수 있음
+- API 키 유출 시 자산 즉시 탈취 (반드시 환경변수·Secrets로만)
+- 백테스트 과적합 — 과거에 좋아도 미래엔 안 통할 수 있음
+- 갭다운·서킷브레이커 시 알고리즘 이상 동작 가능
+
 ## 새 세션 시작 시 행동 강령
 
 1. 이 파일을 자동으로 읽었는지 확인하고, **현재 어디까지 완료됐는지** 위 체크리스트로 파악한다.
