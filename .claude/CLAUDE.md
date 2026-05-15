@@ -68,10 +68,24 @@ docs/spec.md                   # 현재 README 의 시스템 프롬프트 명세
 - GitHub Public/Private: 일단 로컬 동작 확인 후 결정
 
 ### 남은 작업 체크리스트
-- [ ] **Phase 2a — Streamlit 앱**: `app.py` 검색창 + 9섹션 리포트 표시 + 비번 보호 + 일일 호출 캡
-- [ ] **Phase 2b — GitHub push**: Public/Private 결정 후 푸시
-- [ ] **Phase 2c — Streamlit Cloud 연동**: Secrets 에 `ANTHROPIC_API_KEY` + `APP_PASSWORD` 설정
-- [ ] **Phase 2d — 친구 공유**: URL + 비번 카톡 전송
+- [x] **Phase 2a — Streamlit 앱** (2026-05-15): `app.py` 검색창 + 9섹션 + 비번 게이트(이후 제거)
+- [x] **Phase 2b — GitHub push** (2026-05-15): Public, `mmi-ing/stock_report`
+- [x] **Phase 2c — Streamlit Cloud 연동** (2026-05-15): 자동 재배포 동작
+- [x] **Phase 2d — 친구 공유** (2026-05-15): URL만으로 접근 (비번 제거)
+
+## Phase 2.5 — 데이터/UX 강화 (2026-05-15)
+
+- [x] 대소문자 무시, 부분 이름 매칭(하이닉스→SK하이닉스 등)
+- [x] 미국 주식 한글명 사전 80+ (엔비디아/애플/테슬라/팔란티어 등)
+- [x] 후보 클릭 → 검색창 자동 입력 + 즉시 리포트 생성
+- [x] 모바일 반응형 CSS (@media max-width:768px)
+- [x] 미장 가격 옆 ≈ ₩원화 환산 (실시간 USD/KRW)
+- [x] **분석 데이터 대폭 확장** (commit 051ca0e):
+  - 퀄리티: FCF, ROE, ROA, PEG, EV/EBITDA, Gross Margin
+  - 애널리스트: 평균/최고/최저 목표가 + 상승여력 + 매수의견
+  - 시장 컨텍스트: 베타, 기관보유%, 내부자%, 공매도%, 숏 회전일
+  - 단타 지표: 52주 위치, ATR(14)%, 거래량 spike, 일봉 RSI, 숏 스퀴즈 점수, MA5/20/50/200
+  - EPS 서프라이즈: 최근 4분기 actual/estimate/surprise% + BEAT/MISS
 
 ### 핵심 코드 (작성 예정 `app.py`)
 - Streamlit 1.x, 단일 파일
