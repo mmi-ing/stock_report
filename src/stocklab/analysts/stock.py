@@ -384,6 +384,112 @@ def _pct_or_na(v: float | None, mult: float = 100) -> str:
     return f"{v*mult:.1f}%"
 
 
+def _rec_to_label(mean: float | None) -> str:
+    if mean is None:
+        return "N/A"
+    if mean <= 1.5:
+        return "Strong Buy"
+    if mean <= 2.5:
+        return "Buy"
+    if mean <= 3.5:
+        return "Hold"
+    if mean <= 4.5:
+        return "Sell"
+    return "Strong Sell"
+
+
+def _build_quality_block(snap: StockSnapshot) -> dict:
+    fin = snap.financials
+    return {
+        "fcf_str": _scale_money(fin.free_cash_flow, snap.currency),
+        "roe_str": f"{fin.roe*100:.1f}%" if fin.roe is not None else "N/A",
+        "roa_str": f"{fin.roa*100:.1f}%" if fin.roa is not None else "N/A",
+        "peg_str": f"{fin.peg_ratio:.2f}" if fin.peg_ratio is not None else "N/A",
+        "ev_ebitda_str": f"{fin.ev_to_ebitda:.1f}" if fin.ev_to_ebitda is not None else "N/A",
+        "gross_margin_str": f"{fin.gross_margin*100:.1f}%" if fin.gross_margin is not None else "N/A",
+        "roe_class": "up" if fin.roe and fin.roe > 0.15 else ("down" if fin.roe and fin.roe < 0 else "neutral"),
+        "peg_class": "up" if fin.peg_ratio and 0 < fin.peg_ratio < 1 else ("down" if fin.peg_ratio and fin.peg_ratio > 2 else "neutral"),
+    }
+
+
+def _build_analyst_box(snap: StockSnapshot) -> dict:
+    t = snap.analyst_targets
+    p = float(snap.price) if snap.price else None
+    upside = None
+    if t.mean and p:
+        upside = (t.mean - p) / p * 100
+    sym = "₩" if snap.currency == "KRW" else "$"
+    fmt = (lambda v: f"{sym}{v:,.0f}") if snap.currency == "KRW" else (lambda v: f"{sym}{v:,.2f}")
+    return {
+        "mean_str": fmt(t.mean) if t.mean else "N/A",
+        "high_str": fmt(t.high) if t.high else "N/A",
+        "low_str": fmt(t.low) if t.low else "N/A",
+        "n_analysts": t.n_analysts or 0,
+        "upside_str": f"{upside:+.1f}%" if upside is not None else "N/A",
+        "upside_class": "up" if upside and upside > 0 else "down",
+        "rec_label": _rec_to_label(t.recommendation_mean),
+        "rec_mean": t.recommendation_mean,
+    }
+
+
+def _build_market_ctx(snap: StockSnapshot) -> dict:
+    m = snap.market_context
+    return {
+        "beta_str": f"{m.beta:.2f}" if m.beta is not None else "N/A",
+        "beta_class": "down" if m.beta and m.beta > 1.5 else ("up" if m.beta and m.beta < 0.8 else "neutral"),
+        "inst_str": f"{m.institutional_pct*100:.1f}%" if m.institutional_pct is not None else "N/A",
+        "insider_str": f"{m.insider_pct*100:.2f}%" if m.insider_pct is not None else "N/A",
+        "short_str": f"{m.short_pct_float*100:.2f}%" if m.short_pct_float is not None else "N/A",
+        "short_ratio_str": f"{m.short_ratio:.1f}일" if m.short_ratio is not None else "N/A",
+    }
+
+
+def _build_trading_box(snap: StockSnapshot, p_val: float | None) -> dict:
+    s = snap.trading_signals
+    sym = "₩" if snap.currency == "KRW" else "$"
+    fmt = (lambda v: f"{sym}{v:,.0f}") if snap.currency == "KRW" else (lambda v: f"{sym}{v:,.2f}")
+    # 단기 추세 신호
+    trend = "N/A"
+    if s.ma5 and s.ma20:
+        if s.ma5 > s.ma20 * 1.01:
+            trend = "단기 상승 (5MA > 20MA)"
+        elif s.ma5 < s.ma20 * 0.99:
+            trend = "단기 하락 (5MA < 20MA)"
+        else:
+            trend = "혼조"
+    return {
+        "pos_52w_pct": f"{s.pos_in_52w_range*100:.0f}%" if s.pos_in_52w_range is not None else "N/A",
+        "pos_52w_val": (s.pos_in_52w_range or 0) * 100,
+        "near_high_str": f"{s.near_52w_high_pct:+.1f}%" if s.near_52w_high_pct is not None else "N/A",
+        "atr_str": f"{s.atr_pct:.2f}%" if s.atr_pct is not None else "N/A",
+        "atr_class": "down" if s.atr_pct and s.atr_pct > 5 else "neutral",
+        "vol_spike_str": f"{s.volume_spike:.2f}x" if s.volume_spike is not None else "N/A",
+        "vol_spike_class": "up" if s.volume_spike and s.volume_spike > 1.5 else "neutral",
+        "daily_rsi_str": f"{s.daily_rsi:.1f}" if s.daily_rsi is not None else "N/A",
+        "daily_rsi_class": "down" if s.daily_rsi and s.daily_rsi > 70 else ("up" if s.daily_rsi and s.daily_rsi < 30 else "neutral"),
+        "ma5_str": fmt(s.ma5) if s.ma5 else "N/A",
+        "ma20_str": fmt(s.ma20) if s.ma20 else "N/A",
+        "ma50_str": fmt(s.ma50) if s.ma50 else "N/A",
+        "ma200_str": fmt(s.ma200) if s.ma200 else "N/A",
+        "trend_label": trend,
+        "squeeze_str": f"{s.short_squeeze_score:.1f}" if s.short_squeeze_score is not None else "N/A",
+        "squeeze_class": "up" if s.short_squeeze_score and s.short_squeeze_score > 50 else "neutral",
+    }
+
+
+def _build_eps_surprises(snap: StockSnapshot) -> list[dict]:
+    out = []
+    for e in snap.earnings_surprises:
+        out.append({
+            "quarter": e.quarter,
+            "actual": f"{e.eps_actual:.2f}" if e.eps_actual is not None else "N/A",
+            "estimate": f"{e.eps_estimate:.2f}" if e.eps_estimate is not None else "N/A",
+            "surprise_str": f"{e.surprise_pct:+.1f}%" if e.surprise_pct is not None else "N/A",
+            "beat": (e.surprise_pct or 0) > 0,
+        })
+    return out
+
+
 def _format_company_sub(snap: StockSnapshot) -> str:
     parts = []
     if snap.exchange:
@@ -492,6 +598,11 @@ def build_context(
         "consensus_str": snap.consensus or "N/A",
         "sector": snap.sector or "N/A",
         "industry": snap.industry or "N/A",
+        "quality": _build_quality_block(snap),
+        "analyst_box": _build_analyst_box(snap),
+        "market_ctx": _build_market_ctx(snap),
+        "trading_box": _build_trading_box(snap, p_val),
+        "eps_surprises": _build_eps_surprises(snap),
         "chart": asdict(chart),
         "indicator_panel": indicator_panel,
         "fin_cards": [asdict(c) for c in _build_fin_cards(snap)],

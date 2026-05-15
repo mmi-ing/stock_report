@@ -28,6 +28,54 @@ class FinancialBlock:
     net_income_yoy: float | None = None
     revenue_history: list[float] = field(default_factory=list)
     net_income_history: list[float] = field(default_factory=list)
+    # 추가 퀄리티 지표
+    free_cash_flow: float | None = None
+    roe: float | None = None  # %
+    roa: float | None = None  # %
+    peg_ratio: float | None = None
+    ev_to_ebitda: float | None = None
+    gross_margin: float | None = None  # %
+
+
+@dataclass
+class AnalystTargets:
+    mean: float | None = None
+    high: float | None = None
+    low: float | None = None
+    n_analysts: int | None = None
+    recommendation_mean: float | None = None  # 1=strong buy, 5=strong sell
+
+
+@dataclass
+class MarketContext:
+    beta: float | None = None
+    institutional_pct: float | None = None  # 0~1
+    insider_pct: float | None = None
+    short_pct_float: float | None = None  # 0~1
+    short_ratio: float | None = None  # days to cover
+
+
+@dataclass
+class EarningsSurprise:
+    quarter: str
+    eps_actual: float | None
+    eps_estimate: float | None
+    surprise_pct: float | None
+
+
+@dataclass
+class TradingSignals:
+    """단타용 지표."""
+    pos_in_52w_range: float | None = None  # 0~1 (52주 저가 대비 위치)
+    atr_pct: float | None = None  # ATR / price * 100 (일일 변동성 %)
+    volume_spike: float | None = None  # 최근 거래량 / 20일 평균
+    ma5: float | None = None
+    ma20: float | None = None
+    ma50: float | None = None
+    ma200: float | None = None
+    short_squeeze_score: float | None = None  # short% * days_to_cover
+    daily_rsi: float | None = None
+    near_52w_high_pct: float | None = None  # 52주 고가까지 거리 % (음수면 위 돌파)
 
 
 @dataclass
@@ -59,8 +107,13 @@ class StockSnapshot:
     industry: str | None = None
     # 시계열
     ohlc: pd.DataFrame = field(default_factory=lambda: pd.DataFrame())
+    daily_ohlc: pd.DataFrame = field(default_factory=lambda: pd.DataFrame())
     # 재무
     financials: FinancialBlock = field(default_factory=FinancialBlock)
+    analyst_targets: AnalystTargets = field(default_factory=AnalystTargets)
+    market_context: MarketContext = field(default_factory=MarketContext)
+    trading_signals: TradingSignals = field(default_factory=TradingSignals)
+    earnings_surprises: list[EarningsSurprise] = field(default_factory=list)
     # 뉴스
     news: list[NewsItem] = field(default_factory=list)
     # 데이터 부족 플래그 (차트 푸터에 (est.) 표시용)
@@ -181,7 +234,110 @@ def fetch(ticker: str, asset_class: AssetClass) -> StockSnapshot:
         cash=_safe_get(info, "totalCash"),
         revenue_yoy=_safe_get(info, "revenueGrowth"),
         net_income_yoy=_safe_get(info, "earningsGrowth"),
+        free_cash_flow=_safe_get(info, "freeCashflow"),
+        roe=_safe_get(info, "returnOnEquity"),
+        roa=_safe_get(info, "returnOnAssets"),
+        peg_ratio=_safe_get(info, "trailingPegRatio") or _safe_get(info, "pegRatio"),
+        ev_to_ebitda=_safe_get(info, "enterpriseToEbitda"),
+        gross_margin=_safe_get(info, "grossMargins"),
     )
+
+    # 애널리스트 컨센서스
+    targets = AnalystTargets(
+        mean=_safe_get(info, "targetMeanPrice"),
+        high=_safe_get(info, "targetHighPrice"),
+        low=_safe_get(info, "targetLowPrice"),
+        n_analysts=_safe_get(info, "numberOfAnalystOpinions"),
+        recommendation_mean=_safe_get(info, "recommendationMean"),
+    )
+
+    # 시장 컨텍스트
+    mctx = MarketContext(
+        beta=_safe_get(info, "beta"),
+        institutional_pct=_safe_get(info, "heldPercentInstitutions"),
+        insider_pct=_safe_get(info, "heldPercentInsiders"),
+        short_pct_float=_safe_get(info, "shortPercentOfFloat"),
+        short_ratio=_safe_get(info, "shortRatio"),
+    )
+
+    # EPS 서프라이즈 (최근 4분기)
+    surprises: list[EarningsSurprise] = []
+    try:
+        eh = yt.earnings_history
+        if eh is not None and hasattr(eh, "iterrows"):
+            for idx, row in eh.tail(4).iterrows():
+                q_label = str(idx)[:10] if hasattr(idx, "strftime") else str(idx)
+                act = row.get("epsActual") if hasattr(row, "get") else None
+                est = row.get("epsEstimate") if hasattr(row, "get") else None
+                srp = row.get("surprisePercent") if hasattr(row, "get") else None
+                surprises.append(EarningsSurprise(
+                    quarter=q_label,
+                    eps_actual=float(act) if act is not None and not pd.isna(act) else None,
+                    eps_estimate=float(est) if est is not None and not pd.isna(est) else None,
+                    surprise_pct=float(srp) if srp is not None and not pd.isna(srp) else None,
+                ))
+    except Exception as e:
+        warnings.append(f"earnings_history: {e}")
+
+    # 단타용 신호 (일봉 기반)
+    daily_df = pd.DataFrame()
+    sig = TradingSignals()
+    try:
+        daily = yt.history(period="1y", interval="1d", auto_adjust=False)
+        if daily is not None and not daily.empty:
+            daily_df = daily
+            close = daily["Close"]
+            vol = daily["Volume"]
+            high = daily["High"]
+            low = daily["Low"]
+            cur_price = float(close.iloc[-1])
+
+            # 52주 위치
+            if week_hi and week_lo and week_hi != week_lo:
+                sig.pos_in_52w_range = (cur_price - float(week_lo)) / (float(week_hi) - float(week_lo))
+                sig.near_52w_high_pct = (float(week_hi) - cur_price) / cur_price * 100
+
+            # ATR(14) %
+            if len(daily) >= 15:
+                prev_close = close.shift(1)
+                tr = pd.concat([
+                    high - low,
+                    (high - prev_close).abs(),
+                    (low - prev_close).abs(),
+                ], axis=1).max(axis=1)
+                atr = tr.tail(14).mean()
+                sig.atr_pct = float(atr) / cur_price * 100
+
+            # 거래량 spike
+            if len(vol) >= 21:
+                avg20 = vol.tail(21).iloc[:-1].mean()
+                if avg20 > 0:
+                    sig.volume_spike = float(vol.iloc[-1]) / float(avg20)
+
+            # 이동평균
+            if len(close) >= 5:
+                sig.ma5 = float(close.tail(5).mean())
+            if len(close) >= 20:
+                sig.ma20 = float(close.tail(20).mean())
+            if len(close) >= 50:
+                sig.ma50 = float(close.tail(50).mean())
+            if len(close) >= 200:
+                sig.ma200 = float(close.tail(200).mean())
+
+            # 일봉 RSI(14)
+            if len(close) >= 15:
+                delta = close.diff()
+                gain = delta.where(delta > 0, 0).rolling(14).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+                rs = gain / loss.replace(0, 1e-10)
+                rsi = 100 - (100 / (1 + rs))
+                sig.daily_rsi = float(rsi.iloc[-1])
+
+            # 숏 스퀴즈 점수
+            if mctx.short_pct_float and mctx.short_ratio:
+                sig.short_squeeze_score = float(mctx.short_pct_float) * 100 * float(mctx.short_ratio)
+    except Exception as e:
+        warnings.append(f"trading_signals: {e}")
 
     # 뉴스 (최대 5개)
     news_items: list[NewsItem] = []
@@ -231,7 +387,12 @@ def fetch(ticker: str, asset_class: AssetClass) -> StockSnapshot:
         sector=_safe_get(info, "sector"),
         industry=_safe_get(info, "industry"),
         ohlc=ohlc,
+        daily_ohlc=daily_df,
         financials=fin,
+        analyst_targets=targets,
+        market_context=mctx,
+        trading_signals=sig,
+        earnings_surprises=surprises,
         news=news_items,
         ohlc_estimated=ohlc_estimated,
         fetch_warnings=warnings,
