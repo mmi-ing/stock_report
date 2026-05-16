@@ -16,6 +16,11 @@ st.set_page_config(page_title="Stock Lab", page_icon="📊", layout="wide")
 st.title("📊 Stock Lab")
 st.caption("개별 종목 · 테마 발굴 · 종목 비교 리포트")
 
+def _pick_suggestion(name: str) -> None:
+    st.session_state["search_input"] = name
+    st.session_state["auto_run"] = True
+
+
 _auto_run = st.session_state.pop("auto_run", False)
 
 col1, col2 = st.columns([4, 1])
@@ -40,10 +45,7 @@ if (run or _auto_run) and effective_query:
         st.warning(f"'{effective_query}' — 아래 중 하나를 선택하세요.")
         for opt in spec.ambiguous_options:
             name = opt.split(" (")[0]
-            if st.button(name, key=f"pick_{opt}"):
-                st.session_state["search_input"] = name
-                st.session_state["auto_run"] = True
-                st.rerun()
+            st.button(name, key=f"pick_{opt}", on_click=_pick_suggestion, args=(name,))
         st.stop()
 
     with st.spinner("데이터 수집 · 리포트 생성 중..."):
