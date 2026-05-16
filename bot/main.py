@@ -20,8 +20,10 @@ from telegram.ext import (
     filters,
 )
 
+from bot.handlers import news as h_news
 from bot.handlers import ticker as h_ticker
 from bot.handlers import watchlist as h_watchlist
+from bot.jobs.news_monitor import job_news_monitor
 from bot.jobs.premarket import broadcast, build_postmarket_summary, build_premarket_brief
 
 logging.basicConfig(format="%(asctime)s %(levelname)s %(name)s: %(message)s", level=logging.INFO)
@@ -29,19 +31,24 @@ logging.basicConfig(format="%(asctime)s %(levelname)s %(name)s: %(message)s", le
 HELP = """\
 *Stock Lab 봇 사용법*
 
-🔍 검색
+🔍 분석
   • `NVDA` / `엔비디아` / `005930` / `삼성전자`
   • `AI 반도체 추천` (테마)
   • `NVDA vs AMD` (비교)
 
-📋 관심종목
-  • `/관심추가 NVDA`
-  • `/관심제거 NVDA`
-  • `/관심목록`
+📰 뉴스
+  • `/news NVDA` — NVDA 최신 뉴스
+  • `/news` — 시장 주요 뉴스
+  • 관심종목 새 뉴스 → 자동 알림 (2시간마다)
 
-⏰ 자동 알림
-  • 07:30 KST · 미장 마감 요약 + 내 관심종목 변동
-  • 20:00 KST · 미장 프리뷰 + 내 관심종목
+📋 관심종목
+  • `/add NVDA` — 추가
+  • `/remove NVDA` — 제거
+  • `/list` — 목록
+
+⏰ 정기 알림 (KST)
+  • 07:30 · 미장 마감 요약 + 관심종목 변동
+  • 20:00 · 미장 프리뷰 + 매크로
 
 ✉️ 그냥 종목/테마 이름 보내면 자동 분석.
 """
@@ -69,9 +76,10 @@ def main() -> None:
 
     # 명령어
     app.add_handler(CommandHandler(["start", "help"], cmd_start))
-    app.add_handler(CommandHandler(["관심목록", "list", "watchlist"], h_watchlist.cmd_watchlist))
-    app.add_handler(CommandHandler(["관심추가", "add"], h_watchlist.cmd_add))
-    app.add_handler(CommandHandler(["관심제거", "remove", "rm"], h_watchlist.cmd_remove))
+    app.add_handler(CommandHandler(["list", "watchlist"], h_watchlist.cmd_watchlist))
+    app.add_handler(CommandHandler(["add"], h_watchlist.cmd_add))
+    app.add_handler(CommandHandler(["remove", "rm"], h_watchlist.cmd_remove))
+    app.add_handler(CommandHandler(["news"], h_news.cmd_news))
 
     # 자유 텍스트 → 종목/테마 분석
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, h_ticker.handle_query))
@@ -81,6 +89,8 @@ def main() -> None:
         kst = pytz.timezone("Asia/Seoul")
         app.job_queue.run_daily(job_postmarket, time=dtime(hour=7, minute=30, tzinfo=kst))
         app.job_queue.run_daily(job_premarket, time=dtime(hour=20, minute=0, tzinfo=kst))
+        # 뉴스 모니터: 2시간마다 (7200초)
+        app.job_queue.run_repeating(job_news_monitor, interval=7200, first=60)
 
     print("🤖 Stock Lab 봇 시작...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
