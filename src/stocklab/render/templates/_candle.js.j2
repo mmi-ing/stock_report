@@ -43,9 +43,22 @@ const candlePlugin = {
   }
 };
 
+// canvas에 명시적 픽셀 크기 지정 후 Chart 생성 — iOS Safari 로컬 파일 호환
+function setCanvasSize(el) {
+  var wrap = el.parentElement;
+  var w = wrap.clientWidth || wrap.offsetWidth || 400;
+  var h = wrap.clientHeight || wrap.offsetHeight || 300;
+  el.width = w;
+  el.height = h;
+  el.style.width = w + 'px';
+  el.style.height = h + 'px';
+  return { w: w, h: h };
+}
+
 function makeMainChart() {
   const el = document.getElementById('candleChart');
   if (!el || !CHART.weeks.length) return;
+  var sz = setCanvasSize(el);
   const lineDs = (label, data, color, dash) => ({
     label, data, borderColor: color, borderWidth: 1.2,
     pointRadius: 0, fill: false, tension: 0.1,
@@ -63,7 +76,8 @@ function makeMainChart() {
       ],
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
+      responsive: false, maintainAspectRatio: false,
+      width: sz.w, height: sz.h,
       animation: { duration: 600 },
       scales: {
         x: {
@@ -102,6 +116,7 @@ function makeMainChart() {
 function makeRsiChart() {
   const el = document.getElementById('rsiChart');
   if (!el || !CHART.rsi.length) return;
+  var sz = setCanvasSize(el);
   new Chart(el.getContext('2d'), {
     type: 'line',
     data: {
@@ -113,7 +128,8 @@ function makeRsiChart() {
       ],
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
+      responsive: false, maintainAspectRatio: false,
+      width: sz.w, height: sz.h,
       scales: {
         x: { ticks: { color: PALETTE.text3, font: { size: 8 } }, grid: { display: false } },
         y: { min: 20, max: 90, ticks: { color: PALETTE.text3, font: { size: 8 } }, grid: { color: 'rgba(30,45,69,0.4)' } },
@@ -129,6 +145,7 @@ function makeRsiChart() {
 function makeMacdChart() {
   const el = document.getElementById('macdChart');
   if (!el || !CHART.macd.length) return;
+  var sz = setCanvasSize(el);
   new Chart(el.getContext('2d'), {
     data: {
       labels: CHART.weeks,
@@ -139,7 +156,8 @@ function makeMacdChart() {
       ],
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
+      responsive: false, maintainAspectRatio: false,
+      width: sz.w, height: sz.h,
       scales: {
         x: { ticks: { color: PALETTE.text3, font: { size: 8 } }, grid: { display: false } },
         y: { ticks: { color: PALETTE.text3, font: { size: 8 } }, grid: { color: 'rgba(30,45,69,0.4)' } },
@@ -152,21 +170,26 @@ function makeMacdChart() {
 function makeSpark(id, data, color) {
   const el = document.getElementById(id);
   if (!el || !data || !data.length) return;
+  var sz = setCanvasSize(el);
   new Chart(el.getContext('2d'), {
     type: 'line',
     data: { labels: data.map((_, i) => i), datasets: [{ data, borderColor: color, borderWidth: 1.5, pointRadius: 0, fill: true, backgroundColor: color + '22', tension: 0.4 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } } },
+    options: {
+      responsive: false, maintainAspectRatio: false, width: sz.w, height: sz.h,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { x: { display: false }, y: { display: false } },
+    },
   });
 }
 
 function initAllCharts() {
-  var el = document.getElementById('candleChart');
-  if (el && el.offsetHeight === 0) {
-    setTimeout(initAllCharts, 100);
-    return;
-  }
-  makeMainChart();
-  makeRsiChart();
-  makeMacdChart();
+  // 이중 rAF: iOS Safari에서 grid 레이아웃 완전 계산 후 실행
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      makeMainChart();
+      makeRsiChart();
+      makeMacdChart();
+    });
+  });
 }
-window.addEventListener('load', function() { setTimeout(initAllCharts, 50); });
+window.addEventListener('load', initAllCharts);
