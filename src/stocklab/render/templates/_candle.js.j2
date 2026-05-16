@@ -159,8 +159,14 @@ function makeSpark(id, data, color) {
   });
 }
 
-window.addEventListener('load', function() {
+function initAllCharts() {
+  var el = document.getElementById('candleChart');
+  if (el && el.offsetHeight === 0) {
+    setTimeout(initAllCharts, 100);
+    return;
+  }
   makeMainChart();
   makeRsiChart();
   makeMacdChart();
-});
+}
+window.addEventListener('load', function() { setTimeout(initAllCharts, 50); });
