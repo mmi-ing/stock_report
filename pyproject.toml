@@ -29,6 +29,10 @@ dev = [
     "pytest-vcr>=1.0",
     "ruff>=0.6",
 ]
+bot = [
+    "python-telegram-bot[job-queue]>=21.0",
+    "pytz>=2024.1",
+]
 
 [project.scripts]
 stocklab = "stocklab.cli:app"

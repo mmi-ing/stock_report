@@ -94,6 +94,45 @@ docs/spec.md                   # 현재 README 의 시스템 프롬프트 명세
 - AI 토글 (켜면 `narrative.generate` 호출, 꺼지면 `--no-llm` 폴백)
 - 일일 호출 캡 (Streamlit 캐시 + 카운터)
 
+## Phase 3a — 텔레그램 알림 봇 (2026-05-17 시작)
+
+stocklab 모듈을 텔레그램 봇으로 노출. 같은 git repo 안 `bot/` 폴더.
+
+### 구조
+```
+bot/
+├── main.py                 # python-telegram-bot Application
+├── storage.py              # 사용자별 관심종목 JSON
+├── handlers/
+│   ├── ticker.py           # 자유 텍스트 → stocklab 리포트 + HTML 첨부
+│   └── watchlist.py        # /관심추가 /관심제거 /관심목록
+├── jobs/
+│   └── premarket.py        # 미장 프리뷰/마감 요약 broadcast
+└── data/watchlist.json     # {user_id: [tickers]}
+```
+
+### 자동 알림 (KST)
+- **07:30** — 미장 마감 요약 + 관심종목 변동
+- **20:00** — 미장 프리뷰 + 매크로 (S&P/Nasdaq/Dow/VIX/USD-KRW)
+
+### 명령어
+- 자유 텍스트: `NVDA` / `엔비디아` / `AI 반도체` / `NVDA vs AMD`
+- `/관심추가 NVDA` `/관심제거 NVDA` `/관심목록`
+- `/start` `/help`
+
+### 진행
+- [x] 봇 골격 + handlers + jobs + storage (2026-05-17)
+- [ ] BotFather 토큰 발급 + 로컬 동작 테스트
+- [ ] 호스팅 결정 (Oracle Cloud Always Free / Fly.io / 로컬)
+- [ ] 미장 캘린더 API (실적 발표 예정) 추가
+- [ ] 시나리오 강세 60%+ 자동 알림 트리거
+
+### 호스팅 옵션
+- **Oracle Cloud Always Free** — 영구 무료 ARM VM (추천)
+- **Fly.io** — 카드 등록 필요
+- **로컬 PC** — 컴 켜있어야 함
+- **GitHub Actions cron** — 스케줄만 가능, 인터랙티브 불가능
+
 ## Phase 3 — 자동매매 로드맵 (단계적, 안전 우선)
 
 자동매매 코드 자체는 1~2주면 만들 수 있으나 **잘 만드는 건 매우 어려움**. 권장 순서:
