@@ -103,12 +103,18 @@ stocklab 모듈을 텔레그램 봇으로 노출. 같은 git repo 안 `bot/` 폴
 bot/
 ├── main.py                 # python-telegram-bot Application
 ├── storage.py              # 사용자별 관심종목 JSON
+├── news_fetcher.py         # Yahoo RSS + yfinance 뉴스 fetch
+├── news_db.py              # SQLite 뉴스 중복방지
 ├── handlers/
 │   ├── ticker.py           # 자유 텍스트 → stocklab 리포트 + HTML 첨부
-│   └── watchlist.py        # /관심추가 /관심제거 /관심목록
+│   ├── watchlist.py        # /add /remove /list
+│   └── news.py             # /news [TICKER] 명령어
 ├── jobs/
-│   └── premarket.py        # 미장 프리뷰/마감 요약 broadcast
-└── data/watchlist.json     # {user_id: [tickers]}
+│   ├── premarket.py        # 미장 프리뷰/마감 요약 broadcast
+│   └── news_monitor.py     # 2시간마다 관심종목 뉴스 모니터링
+└── data/
+    ├── watchlist.json      # {user_id: [tickers]}
+    └── news.db             # 전송된 뉴스 ID (SQLite)
 ```
 
 ### 자동 알림 (KST)
@@ -122,6 +128,7 @@ bot/
 
 ### 진행
 - [x] 봇 골격 + handlers + jobs + storage (2026-05-17)
+- [x] **Phase 3b — 뉴스 알림 봇** (2026-05-17): Yahoo RSS + yfinance fallback + SQLite 중복방지 + `/news` 명령어 + 2시간마다 관심종목 모니터링
 - [ ] BotFather 토큰 발급 + 로컬 동작 테스트
 - [ ] 호스팅 결정 (Oracle Cloud Always Free / Fly.io / 로컬)
 - [ ] 미장 캘린더 API (실적 발표 예정) 추가
