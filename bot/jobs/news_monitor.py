@@ -9,7 +9,7 @@ import asyncio
 
 from telegram.ext import ContextTypes
 
-from bot import news_db, news_fetcher, storage
+from bot import news_db, news_fetcher, news_summarizer, storage
 
 
 async def job_news_monitor(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -28,8 +28,9 @@ async def job_news_monitor(context: ContextTypes.DEFAULT_TYPE) -> None:
                 if not new_items:
                     continue
 
-                msg = news_fetcher.format_news_message(ticker, new_items[:3])
-                msg = "🔔 " + msg  # 알림 강조
+                send_items = new_items[:3]
+                msg = await asyncio.to_thread(news_summarizer.summarize, ticker, send_items)
+                msg = "🔔 " + msg
 
                 await context.bot.send_message(
                     chat_id=user_id,
